@@ -90,7 +90,6 @@ body::before { content:''; position:fixed; inset:0; background-image:linear-grad
 
 <div class="page">
   <div class="card">
-
     <div class="card-header">
       <div class="icon-box">
         <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg>
@@ -102,7 +101,6 @@ body::before { content:''; position:fixed; inset:0; background-image:linear-grad
     </div>
 
     <div class="card-body">
-
       <div class="drop-zone" id="drop-zone">
         <input type="file" id="file-input" accept=".wav,audio/wav,audio/*">
         <div class="drop-icon">
@@ -154,7 +152,6 @@ body::before { content:''; position:fixed; inset:0; background-image:linear-grad
           <div class="debug-body" id="debug-body"></div>
         </div>
       </div>
-
     </div>
 
     <div class="card-footer">
@@ -176,7 +173,6 @@ const DTMF_MAP  = [
 ];
 
 // ── Goertzel ──────────────────────────────────────────────────
-// Returns energy (power) at targetFreq within samples block
 function goertzel(samples, targetFreq, sampleRate) {
   const N     = samples.length;
   const k     = Math.round(N * targetFreq / sampleRate);
@@ -196,25 +192,19 @@ function detectDigit(samples, sampleRate) {
   const colE = COL_FREQS.map(f => goertzel(samples, f, sampleRate));
 
   const totalE = [...rowE, ...colE].reduce((s,v) => s+v, 0);
-
-  // Dynamic noise floor: signal must have meaningful energy
-  // Use average energy as baseline — target freqs must dominate
-  const avgE = totalE / 8;
+  const avgE   = totalE / 8;
 
   const maxRow = Math.max(...rowE);
   const maxCol = Math.max(...colE);
 
-  // Both dominant freqs must be well above average energy
+  // Both target freqs must dominate clearly above average noise
   if (maxRow < avgE * 3) return null;
   if (maxCol < avgE * 3) return null;
 
-  // Dominant freq must be clearly strongest in its group
   const rowSorted = [...rowE].sort((a,b) => b-a);
   const colSorted = [...colE].sort((a,b) => b-a);
-
-  // Ratio of strongest to second strongest (must be > 1.3)
-  const rowRatio = rowSorted[1] > 0 ? rowSorted[0] / rowSorted[1] : 999;
-  const colRatio = colSorted[1] > 0 ? colSorted[0] / colSorted[1] : 999;
+  const rowRatio  = rowSorted[1] > 0 ? rowSorted[0]/rowSorted[1] : 999;
+  const colRatio  = colSorted[1] > 0 ? colSorted[0]/colSorted[1] : 999;
 
   if (rowRatio < 1.3 || colRatio < 1.3) return null;
 
@@ -222,39 +212,114 @@ function detectDigit(samples, sampleRate) {
   const colIdx = colE.indexOf(maxCol);
 
   return {
-    digit:      DTMF_MAP[rowIdx][colIdx],
+    digit: DTMF_MAP[rowIdx][colIdx],
     rowIdx, colIdx,
     confidence: Math.min(rowRatio, colRatio)
   };
 }
 
+// ── Main DTMF decode ──────────────────────────────────────────
+function decodeDTMF(samples, sampleRate, onProgress) {
+  // 80ms window = 55+ cycles for lowest DTMF freq (697 Hz)
+  // 20ms step   = fine enough to catch boundaries cleanly
+  const windowSamp = Math.floor(sampleRate * 0.08);
+  const stepSamp   = Math.floor(sampleRate * 0.02);
+
+  const frames = [];
+  const total  = Math.floor((samples.length - windowSamp) / stepSamp);
+
+  for (let i = 0; i * stepSamp + windowSamp <= samples.length; i++) {
+    const start  = i * stepSamp;
+    const window = samples.subarray(start, start + windowSamp);
+    frames.push(detectDigit(window, sampleRate));
+    if (i % 50 === 0) onProgress((i / total) * 100);
+  }
+
+  // ── Run-length collapse with dead-zone gap suppression ────
+  //
+  // MIN_RUN = 4 frames × 20ms = 80ms minimum to accept a digit.
+  //   → Transition artifacts (1-3 frames) are rejected.
+  //   → Real DTMF tones (350ms default) = ~17 frames → always accepted.
+  //
+  // GAP_FRAMES = 3 frames × 20ms = 60ms dead zone after each digit.
+  //   → Kills the "phantom 5" that appears during frequency transitions.
+
+  const MIN_RUN    = 4;
+  const GAP_FRAMES = 3;
+
+  const digits    = [];
+  const debugInfo = [];
+
+  let curDigit      = null;
+  let runFrames     = 0;
+  let runConfs      = [];
+  let gapCount      = 0;
+  let lastCommitted = null;
+
+  function commitRun() {
+    if (curDigit && runFrames >= MIN_RUN) {
+      const avgConf = runConfs.length
+        ? runConfs.reduce((s,v)=>s+v,0)/runConfs.length : 1;
+      if (curDigit !== lastCommitted) {
+        digits.push(curDigit);
+        debugInfo.push({ digit: curDigit, frames: runFrames, confidence: avgConf });
+        lastCommitted = curDigit;
+      }
+      gapCount = GAP_FRAMES;
+    }
+    curDigit  = null;
+    runFrames = 0;
+    runConfs  = [];
+  }
+
+  frames.forEach(result => {
+    // Dead zone — skip frames right after a committed digit
+    if (gapCount > 0) {
+      gapCount--;
+      return;
+    }
+
+    const d = result ? result.digit : null;
+
+    if (d === null) {
+      // Silence — commit pending run and reset
+      commitRun();
+      lastCommitted = null;  // silence fully resets → same digit can appear again
+    } else if (d === curDigit) {
+      runFrames++;
+      if (result.confidence) runConfs.push(result.confidence);
+    } else {
+      // Different digit — commit previous, start new
+      commitRun();
+      curDigit  = d;
+      runFrames = 1;
+      runConfs  = result.confidence ? [result.confidence] : [];
+    }
+  });
+  commitRun();
+
+  return { digits, debugInfo };
+}
+
 // ── Parse WAV ─────────────────────────────────────────────────
 function parseWav(arrayBuffer) {
   const view = new DataView(arrayBuffer);
-
-  // Verify RIFF header
   const riff = String.fromCharCode(view.getUint8(0),view.getUint8(1),view.getUint8(2),view.getUint8(3));
-  if (riff !== 'RIFF') throw new Error('Not a valid WAV file. Please upload the downloaded ToneGuard WAV.');
+  if (riff !== 'RIFF') throw new Error('Not a valid WAV file.');
 
   const channels   = view.getUint16(22, true);
   const sampleRate = view.getUint32(24, true);
   const bitsPerSmp = view.getUint16(34, true);
 
-  // Find 'data' chunk — handles files with extra chunks (e.g. LIST)
-  let offset = 12;
-  let dataOffset = -1, dataSize = 0;
+  let offset = 12, dataOffset = -1, dataSize = 0;
   while (offset < view.byteLength - 8) {
-    const id = String.fromCharCode(
-      view.getUint8(offset),view.getUint8(offset+1),
-      view.getUint8(offset+2),view.getUint8(offset+3)
-    );
+    const id = String.fromCharCode(view.getUint8(offset),view.getUint8(offset+1),view.getUint8(offset+2),view.getUint8(offset+3));
     const sz = view.getUint32(offset+4, true);
-    if (id === 'data') { dataOffset = offset + 8; dataSize = sz; break; }
+    if (id === 'data') { dataOffset = offset+8; dataSize = sz; break; }
     offset += 8 + sz;
   }
   if (dataOffset === -1) throw new Error('Could not find audio data in WAV file.');
 
-  // Read samples — mono only (left channel if stereo)
   const bytesPerSample = bitsPerSmp / 8;
   const frameSize      = channels * bytesPerSample;
   const numFrames      = Math.floor(dataSize / frameSize);
@@ -269,148 +334,82 @@ function parseWav(arrayBuffer) {
     else val = 0;
     samples[i] = val;
   }
-
   return { samples, sampleRate, channels, bitsPerSmp };
 }
 
-// ── Main DTMF decode ──────────────────────────────────────────
-function decodeDTMF(samples, sampleRate, onProgress) {
-  // Use 80ms windows — enough cycles even for lowest DTMF freq (697Hz = 55 cycles)
-  // Step = 20ms (75% overlap) for fine resolution
-  const windowSamp = Math.floor(sampleRate * 0.08);  // 80ms
-  const stepSamp   = Math.floor(sampleRate * 0.02);  // 20ms step
-
-  const frames = [];
-  const total  = Math.floor((samples.length - windowSamp) / stepSamp);
-
-  for (let i = 0; i * stepSamp + windowSamp <= samples.length; i++) {
-    const start  = i * stepSamp;
-    const window = samples.subarray(start, start + windowSamp);
-    frames.push(detectDigit(window, sampleRate));
-    if (i % 50 === 0) onProgress((i / total) * 100);
-  }
-
-  // Collapse runs into single digits
-  // A "digit event" = run of same digit for at least 2 consecutive frames
-  const digits    = [];
-  const debugInfo = [];
-  let lastDigit   = null;
-  let runFrames   = 0;
-  let runConfs    = [];
-
-  function commitRun() {
-    if (lastDigit && runFrames >= 2) {
-      const avgConf = runConfs.reduce((s,v)=>s+v,0) / runConfs.length;
-      digits.push(lastDigit);
-      debugInfo.push({ digit: lastDigit, frames: runFrames, confidence: avgConf });
-    }
-  }
-
-  frames.forEach(result => {
-    const d = result ? result.digit : null;
-    if (d === lastDigit && d !== null) {
-      runFrames++;
-      if (result.confidence) runConfs.push(result.confidence);
-    } else {
-      commitRun();
-      lastDigit = d;
-      runFrames = d ? 1 : 0;
-      runConfs  = d && result.confidence ? [result.confidence] : [];
-    }
-  });
-  commitRun();
-
-  return { digits, debugInfo };
-}
-
 // ── Draw waveform ─────────────────────────────────────────────
+let bitsPerSmpLabel = 16;
+
 function drawWaveform(samples, sampleRate) {
   const canvas = document.getElementById('wave-canvas');
   canvas.width  = canvas.offsetWidth * devicePixelRatio;
   canvas.height = canvas.offsetHeight * devicePixelRatio;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-
   ctx.clearRect(0,0,W,H);
-  ctx.strokeStyle = '#2d6a4f';
-  ctx.lineWidth   = 1.5;
-  ctx.shadowColor = '#2d6a4f';
-  ctx.shadowBlur  = 3;
+  ctx.strokeStyle='#2d6a4f'; ctx.lineWidth=1.5;
+  ctx.shadowColor='#2d6a4f'; ctx.shadowBlur=3;
   ctx.beginPath();
-
   const step = Math.ceil(samples.length / W);
   for (let x = 0; x < W; x++) {
     let peak = 0;
     for (let j = x*step; j < (x+1)*step && j < samples.length; j++) {
       if (Math.abs(samples[j]) > peak) peak = Math.abs(samples[j]);
     }
-    const y = H/2 - peak * (H/2 - 2);
-    x === 0 ? ctx.moveTo(0, H/2) : ctx.lineTo(x, y);
+    x === 0 ? ctx.moveTo(0, H/2) : ctx.lineTo(x, H/2 - peak*(H/2-2));
   }
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
+  ctx.stroke(); ctx.shadowBlur=0;
   document.getElementById('wave-info').textContent =
-    `${(samples.length/sampleRate).toFixed(2)}s · ${sampleRate} Hz · ${bitsPerSmpLabel} bit`;
+    `${(samples.length/sampleRate).toFixed(2)}s · ${sampleRate} Hz · ${bitsPerSmpLabel}-bit`;
 }
 
 // ── State ─────────────────────────────────────────────────────
 let loadedSamples    = null;
 let loadedSampleRate = null;
-let bitsPerSmpLabel  = 16;
 
 function showError(msg) {
   const box = document.getElementById('error-box');
   document.getElementById('error-text').textContent = msg;
   box.style.display = 'flex';
 }
-
-function hideError() {
-  document.getElementById('error-box').style.display = 'none';
-}
+function hideError() { document.getElementById('error-box').style.display='none'; }
 
 function showResult(digits, debugInfo) {
-  const section = document.getElementById('result-section');
-  section.style.display = 'block';
-
+  document.getElementById('result-section').style.display = 'block';
   const code = digits.join('');
   document.getElementById('code-display').textContent = code || '——————';
 
   const row = document.getElementById('digit-row');
   row.innerHTML = '';
-  digits.forEach((d, i) => {
+  digits.forEach((d,i) => {
     const box = document.createElement('div');
     box.className = 'digit-box';
-    box.style.animationDelay = (i * 80) + 'ms';
+    box.style.animationDelay = (i*80)+'ms';
     box.innerHTML = `<div class="d-num">${d}</div><div class="d-idx">#${i+1}</div>`;
     row.appendChild(box);
   });
 
   const avgConf = debugInfo.length
-    ? debugInfo.reduce((s,d) => s+d.confidence, 0) / debugInfo.length : 0;
+    ? debugInfo.reduce((s,d)=>s+d.confidence,0)/debugInfo.length : 0;
   document.getElementById('confidence-badge').textContent =
-    `${digits.length} digit${digits.length!==1?'s':''} · confidence ${avgConf.toFixed(1)}×`;
+    `${digits.length} digit${digits.length!==1?'s':''} · ${avgConf.toFixed(1)}× confidence`;
 
-  // Debug table
-  const maxFrames = Math.max(...debugInfo.map(d=>d.frames), 1);
+  const maxF = Math.max(...debugInfo.map(d=>d.frames), 1);
   document.getElementById('debug-body').innerHTML = debugInfo.map((d,i) => `
     <div class="freq-row">
       <span style="width:18px;color:var(--accent);font-weight:600">${d.digit}</span>
       <span style="width:24px;color:var(--text-3)">#${i+1}</span>
-      <div class="freq-bar-wrap">
-        <div class="freq-bar" style="width:${Math.round(d.frames/maxFrames*100)}%"></div>
-      </div>
+      <div class="freq-bar-wrap"><div class="freq-bar" style="width:${Math.round(d.frames/maxF*100)}%"></div></div>
       <span style="width:56px;text-align:right">${d.frames} frames</span>
       <span style="width:48px;text-align:right">${d.confidence.toFixed(1)}×</span>
     </div>`).join('');
 }
 
-// ── File load ─────────────────────────────────────────────────
+// ── File handling ─────────────────────────────────────────────
 function handleFile(file) {
   if (!file) return;
   hideError();
   document.getElementById('result-section').style.display = 'none';
-
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -418,32 +417,22 @@ function handleFile(file) {
       loadedSamples    = samples;
       loadedSampleRate = sampleRate;
       bitsPerSmpLabel  = bitsPerSmp;
-
       document.getElementById('wave-wrap').style.display = 'block';
       drawWaveform(samples, sampleRate);
-
       const dz = document.getElementById('drop-zone');
       dz.classList.add('has-file');
       document.getElementById('drop-title').textContent = `✓ ${file.name}`;
       document.getElementById('btn-decode').disabled = false;
-
-    } catch(err) {
-      showError(err.message);
-    }
+    } catch(err) { showError(err.message); }
   };
   reader.readAsArrayBuffer(file);
 }
 
 document.getElementById('file-input').addEventListener('change', e => handleFile(e.target.files[0]));
-
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
 dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
-dz.addEventListener('drop', e => {
-  e.preventDefault();
-  dz.classList.remove('drag-over');
-  handleFile(e.dataTransfer.files[0]);
-});
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
 
 // ── Decode ────────────────────────────────────────────────────
 document.getElementById('btn-decode').addEventListener('click', () => {
@@ -457,23 +446,19 @@ document.getElementById('btn-decode').addEventListener('click', () => {
     try {
       const { digits, debugInfo } = decodeDTMF(
         loadedSamples, loadedSampleRate,
-        pct => { document.getElementById('progress-bar').style.width = pct + '%'; }
+        pct => { document.getElementById('progress-bar').style.width = pct+'%'; }
       );
-
       document.getElementById('progress-bar').style.width = '100%';
-
       setTimeout(() => {
         document.getElementById('progress-wrap').style.display = 'none';
         document.getElementById('progress-bar').style.width = '0%';
         document.getElementById('btn-decode').disabled = false;
-
         if (digits.length === 0) {
-          showError('No DTMF tones detected. Try re-downloading the WAV from captcha.html and uploading again.');
+          showError('No DTMF tones detected. Re-download the WAV from captcha.html and try again.');
         } else {
           showResult(digits, debugInfo);
         }
       }, 300);
-
     } catch(err) {
       showError(err.message);
       document.getElementById('btn-decode').disabled = false;
@@ -484,8 +469,7 @@ document.getElementById('btn-decode').addEventListener('click', () => {
 
 // ── Copy ──────────────────────────────────────────────────────
 document.getElementById('btn-copy').addEventListener('click', function() {
-  const code = document.getElementById('code-display').textContent;
-  navigator.clipboard.writeText(code).then(() => {
+  navigator.clipboard.writeText(document.getElementById('code-display').textContent).then(() => {
     this.innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!`;
     this.classList.add('copied');
     setTimeout(() => {
@@ -497,7 +481,7 @@ document.getElementById('btn-copy').addEventListener('click', function() {
 
 // ── Debug toggle ──────────────────────────────────────────────
 document.getElementById('debug-toggle').addEventListener('click', () => {
-  const body  = document.getElementById('debug-body');
+  const body = document.getElementById('debug-body');
   const arrow = document.getElementById('debug-arrow');
   body.classList.toggle('open');
   arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
