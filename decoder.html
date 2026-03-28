@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tone Decoder — DSP CAPTCHA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --panel: #1c2128;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --accent2: #3fb950;
+  --warn: #d29922;
+  --danger: #f85149;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1rem 4rem;
+}
+
+.wrap { width: 100%; max-width: 560px; }
+
+/* Header */
+.page-header { margin-bottom: 2rem; }
+.back-link {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  margin-bottom: 1rem;
+  transition: color 0.15s;
+}
+.back-link:hover { color: var(--accent); }
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.5rem; font-weight: 800;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+h1 span { color: var(--accent); }
+.page-sub { font-size: 0.68rem; color: var(--muted); line-height: 1.6; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.card-header {
+  padding: 0.75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  background: var(--panel);
+}
+.card-header .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border);
+}
+.card-header .dot.active { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+.card-body { padding: 1.2rem; }
+
+/* ── Method tabs ── */
+.tabs {
+  display: flex; gap: 0; margin-bottom: 1.2rem;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+}
+.tab-btn {
+  flex: 1; padding: 0.6rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.08em;
+  cursor: pointer; border: none;
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.15s;
+  border-right: 1px solid var(--border);
+}
+.tab-btn:last-child { border-right: none; }
+.tab-btn.active { background: var(--accent); color: #fff; }
+.tab-btn:not(.active):hover { background: var(--panel); color: var(--text); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Upload zone ── */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(88,166,255,0.05);
+}
+.drop-zone input {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.drop-text { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
+.drop-text strong { color: var(--accent); }
+
+/* File info */
+.file-info {
+  display: none;
+  padding: 0.7rem 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 0.8rem;
+  display: none;
+  align-items: center; gap: 0.5rem;
+}
+.file-info .fname { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Mic zone ── */
+.mic-btn {
+  width: 100%;
+  padding: 1rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem; font-weight: 600;
+  letter-spacing: 0.1em;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+  transition: all 0.2s;
+  margin-bottom: 0.8rem;
+}
+.mic-btn:hover { border-color: var(--accent); color: var(--accent); }
+.mic-btn.recording {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(248,81,73,0.07);
+  animation: pulse-border 1s ease-in-out infinite alternate;
+}
+@keyframes pulse-border {
+  from { box-shadow: none; }
+  to   { box-shadow: 0 0 12px rgba(248,81,73,0.3); }
+}
+.mic-hint { font-size: 0.62rem; color: var(--muted); text-align: center; line-height: 1.6; }
+
+/* ── Waveform canvas ── */
+#decodeCanvas {
+  display: block; width: 100%; height: 72px;
+  background: #0d1117;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  margin: 0.8rem 0;
+}
+
+/* ── Decode button ── */
+.btn-decode {
+  width: 100%;
+  padding: 0.8rem;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem; font-weight: 800;
+  letter-spacing: 0.15em;
+  background: var(--accent);
+  color: #fff;
+  border: none; border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.btn-decode:hover { background: #79bcff; }
+.btn-decode:disabled { opacity: 0.35; cursor: default; }
+
+/* ── Progress ── */
+.progress-wrap { margin-top: 0.8rem; display: none; }
+.progress-label { font-size: 0.62rem; color: var(--muted); margin-bottom: 0.3rem; display: flex; justify-content: space-between; }
+.progress-track { height: 3px; background: var(--panel); border-radius: 2px; overflow: hidden; }
+.progress-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0%; transition: width 0.1s; }
+
+/* ── Result ── */
+.result-section { margin-top: 1.2rem; display: none; }
+.result-label { font-size: 0.6rem; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.6rem; }
+.digit-row {
+  display: flex; gap: 0.5rem; justify-content: center;
+  margin-bottom: 0.8rem;
+}
+.digit-cell {
+  width: 52px; height: 60px;
+  background: var(--panel);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 1.6rem; font-weight: 800;
+  color: var(--muted);
+  transition: all 0.25s;
+}
+.digit-cell.filled { border-color: var(--accent2); color: var(--accent2); background: rgba(63,185,80,0.07); }
+.digit-cell.appear { animation: pop-in 0.25s cubic-bezier(0.175,0.885,0.32,1.275); }
+@keyframes pop-in { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
+
+/* Copy row */
+.copy-row {
+  display: flex; gap: 0.6rem; align-items: center;
+}
+.code-readonly {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--accent2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  padding: 0.6rem 0.8rem;
+  text-align: center;
+  outline: none;
+  cursor: text;
+  user-select: all;
+}
+.btn-copy {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-copy:hover { border-color: var(--accent2); color: var(--accent2); }
+.btn-copy.copied { border-color: var(--accent2); color: var(--accent2); }
+
+.go-back-hint {
+  font-size: 0.65rem; color: var(--muted); text-align: center; margin-top: 0.8rem; line-height: 1.7;
+}
+.go-back-hint a { color: var(--accent); text-decoration: none; }
+.go-back-hint a:hover { text-decoration: underline; }
+
+/* log */
+.decode-log {
+  margin-top: 0.8rem;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.62rem;
+  color: var(--muted);
+  max-height: 100px;
+  overflow-y: auto;
+  line-height: 1.9;
+}
+.decode-log .ok  { color: var(--accent2); }
+.decode-log .hi  { color: var(--accent); }
+.decode-log .err { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-header">
+    <a class="back-link" href="captcha.html">← Back to CAPTCHA page</a>
+    <h1>Tone <span>Decoder</span></h1>
+    <p class="page-sub">
+      Upload the downloaded WAV file, or use your microphone to capture the tone live.<br>
+      The hidden code will be extracted and shown below.
+    </p>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="dot active" id="inputDot"></div>
+      INPUT METHOD
+    </div>
+    <div class="card-body">
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('upload')">⬆ Upload WAV File</button>
+        <button class="tab-btn"       onclick="switchTab('mic')">🎤 Live Microphone</button>
+      </div>
+
+      <!-- Upload tab -->
+      <div class="tab-panel active" id="tab-upload">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" accept=".wav,audio/*" id="fileInput" onchange="handleFile(this.files[0])">
+          <div class="drop-icon">🎵</div>
+          <div class="drop-text">
+            <strong>Click to upload</strong> or drag & drop<br>
+            WAV file from the CAPTCHA page
+          </div>
+        </div>
+        <div class="file-info" id="fileInfo">
+          <span>📄</span>
+          <span class="fname" id="fileName">—</span>
+          <span id="fileDur" style="margin-left:auto;flex-shrink:0">—</span>
+        </div>
+      </div>
+
+      <!-- Mic tab -->
+      <div class="tab-panel" id="tab-mic">
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()">
+          <span id="micIcon">🎤</span>
+          <span id="micLabel">Start Listening</span>
+        </button>
+        <canvas id="decodeCanvas"></canvas>
+        <div class="mic-hint">
+          Play the tone from the CAPTCHA page near your microphone.<br>
+          Recording stops automatically when tone ends.
+        </div>
+      </div>
+
+      <!-- Decode button -->
+      <div style="margin-top:1rem">
+        <button class="btn-decode" id="decodeBtn" onclick="runDecode()" disabled>
+          ⚙ Decode Tone
+        </button>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-label"><span id="progressText">Analysing…</span><span id="progressPct">0%</span></div>
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Result card -->
+  <div class="card" id="resultCard" style="display:none">
+    <div class="card-header">
+      <div class="dot active" style="background:var(--accent2);box-shadow:0 0 6px var(--accent2)"></div>
+      DECODED RESULT
+    </div>
+    <div class="card-body">
+      <div class="result-label">Detected digits (in order)</div>
+      <div class="digit-row" id="digitRow">
+        <div class="digit-cell" id="rc0">?</div>
+        <div class="digit-cell" id="rc1">?</div>
+        <div class="digit-cell" id="rc2">?</div>
+        <div class="digit-cell" id="rc3">?</div>
+        <div class="digit-cell" id="rc4">?</div>
+        <div class="digit-cell" id="rc5">?</div>
+      </div>
+      <div class="copy-row">
+        <input class="code-readonly" id="codeReadonly" readonly value="——————">
+        <button class="btn-copy" id="copyBtn" onclick="copyCode()">⎘ Copy</button>
+      </div>
+      <div class="go-back-hint">
+        Copy this code → go back to <a href="captcha.html">CAPTCHA page</a> → paste & click VERIFY
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <div class="card-header"><div class="dot"></div>DECODE LOG</div>
+    <div class="card-body" style="padding:0">
+      <div class="decode-log" id="decodeLog">
+        <span class="hi">[READY]</span> Tone decoder initialised. Upload a WAV or use mic.<br>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ─── DTMF table ───────────────────────────────────────────────────────────────
+const ROW_FREQS = [697, 770, 852, 941];
+const COL_FREQS = [1209, 1336, 1477];
+const ALL_FREQS = [...ROW_FREQS, ...COL_FREQS];
+const DTMF_MAP  = {
+  '697,1209':'1','697,1336':'2','697,1477':'3',
+  '770,1209':'4','770,1336':'5','770,1477':'6',
+  '852,1209':'7','852,1336':'8','852,1477':'9',
+  '941,1209':'*','941,1336':'0','941,1477':'#',
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let audioCtx    = null;
+let decodeBuf   = null;   // AudioBuffer to decode
+let micStream   = null;
+let micRecorder = null;
+let micChunks   = [];
+let micActive   = false;
+let scopeAnimId = null;
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', (i===0 && tab==='upload')||(i===1 && tab==='mic'));
+  });
+  document.getElementById('tab-upload').classList.toggle('active', tab==='upload');
+  document.getElementById('tab-mic').classList.toggle('active', tab==='mic');
+}
+
+// ─── File upload ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+async function handleFile(file) {
+  if (!file) return;
+  log(`File selected: <span class="hi">${file.name}</span> (${(file.size/1024).toFixed(1)} KB)`);
+  document.getElementById('fileName').textContent = file.name;
+
+  ensureAudio();
+  const arrayBuf = await file.arrayBuffer();
+  audioCtx.decodeAudioData(arrayBuf, buf => {
+    decodeBuf = buf;
+    const dur = buf.duration.toFixed(2);
+    document.getElementById('fileDur').textContent = dur + 's';
+    document.getElementById('fileInfo').style.display = 'flex';
+    document.getElementById('decodeBtn').disabled = false;
+    log(`Audio decoded: ${dur}s, ${buf.sampleRate}Hz, ${buf.numberOfChannels}ch`);
+    drawWaveformPreview(buf);
+  }, err => {
+    log(`<span class="err">Error decoding file: ${err}</span>`);
+  });
+}
+
+function drawWaveformPreview(buf) {
+  const canvas = document.getElementById('decodeCanvas');
+  canvas.style.display = 'block';
+  canvas.width  = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(0,0,W,H);
+
+  const data = buf.getChannelData(0);
+  const step = Math.ceil(data.length / W);
+  ctx.beginPath(); ctx.strokeStyle = '#58a6ff'; ctx.lineWidth = 1;
+  for (let x=0; x<W; x++) {
+    let max = 0;
+    for (let j=0; j<step; j++) { const v=Math.abs(data[x*step+j]||0); if(v>max) max=v; }
+    const h = max * H * 0.9;
+    ctx.moveTo(x, H/2 - h/2);
+    ctx.lineTo(x, H/2 + h/2);
+  }
+  ctx.stroke();
+}
+
+// ─── Mic input ────────────────────────────────────────────────────────────────
+async function toggleMic() {
+  if (micActive) {
+    stopMic();
+  } else {
+    await startMic();
+  }
+}
+
+async function startMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({audio:{sampleRate:44100, channelCount:1}, video:false});
+    micChunks = [];
+    micRecorder = new MediaRecorder(micStream);
+    micRecorder.ondataavailable = e => micChunks.push(e.data);
+    micRecorder.onstop = async () => {
+      const blob = new Blob(micChunks, {type:'audio/webm'});
+      ensureAudio();
+      const arrayBuf = await blob.arrayBuffer();
+      audioCtx.decodeAudioData(arrayBuf, buf => {
+        decodeBuf = buf;
+        log(`Mic recording: ${buf.duration.toFixed(2)}s captured`);
+        document.getElementById('decodeBtn').disabled = false;
+        drawWaveformPreview(buf);
+      });
+    };
+    micRecorder.start();
+    micActive = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('micLabel').textContent = 'Recording… Click to Stop';
+    document.getElementById('micIcon').textContent = '⏹';
+    log('Microphone recording started');
+    startMicScope();
+  } catch(e) {
+    log(`<span class="err">Mic access denied: ${e.message}</span>`);
+  }
+}
+
+function stopMic() {
+  if (micRecorder && micRecorder.state !== 'inactive') micRecorder.stop();
+  if (micStream) micStream.getTracks().forEach(t=>t.stop());
+  micActive = false;
+  document.getElementById('micBtn').classList.remove('recording');
+  document.getElementById('micLabel').textContent = 'Start Listening';
+  document.getElementById('micIcon').textContent = '🎤';
+  if (scopeAnimId) { cancelAnimationFrame(scopeAnimId); scopeAnimId=null; }
+}
+
+function startMicScope() {
+  ensureAudio();
+  const src  = audioCtx.createMediaStreamSource(micStream);
+  const anal = audioCtx.createAnalyser();
+  anal.fftSize = 1024;
+  src.connect(anal);
+  const canvas = document.getElementById('decodeCanvas');
+  canvas.width  = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const buf = new Float32Array(anal.fftSize);
+  function draw() {
+    anal.getFloatTimeDomainData(buf);
+    ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+    ctx.beginPath(); ctx.strokeStyle='#f85149'; ctx.lineWidth=1.5*devicePixelRatio;
+    const sw = W/buf.length;
+    buf.forEach((v,i)=>{ const y=H/2+v*H/2.2; i?ctx.lineTo(i*sw,y):ctx.moveTo(i*sw,y); });
+    ctx.stroke();
+    scopeAnimId = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ─── Goertzel ─────────────────────────────────────────────────────────────────
+function goertzel(samples, freq, fs) {
+  const n = samples.length;
+  const k = Math.round(n * freq / fs);
+  const w = 2 * Math.PI * k / n;
+  const cos = Math.cos(w), sin = Math.sin(w), c = 2*cos;
+  let q1=0, q2=0;
+  for (let i=0; i<n; i++) { const q0=c*q1-q2+samples[i]; q2=q1; q1=q0; }
+  return (q1-q2*cos)**2 + (q2*sin)**2;
+}
+
+// ─── Decode audio buffer ──────────────────────────────────────────────────────
+async function runDecode() {
+  if (!decodeBuf) return;
+  document.getElementById('decodeBtn').disabled = true;
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'block';
+
+  // Reset digit cells
+  for (let i=0; i<6; i++) {
+    const c = document.getElementById('rc'+i);
+    c.textContent = '?'; c.className = 'digit-cell';
+  }
+
+  const fs       = decodeBuf.sampleRate;
+  const samples  = decodeBuf.getChannelData(0);
+  const total    = samples.length;
+
+  // Window size: ~80ms for Goertzel (good frequency resolution)
+  const WIN      = Math.floor(fs * 0.08);
+  const HOP      = Math.floor(WIN / 4);           // 75% overlap
+  const MIN_POW  = 100;                            // minimum power threshold
+  const MIN_CONF = 0.55;                           // F0/F1 separation confidence
+
+  const frames   = [];
+
+  // Analyse frames
+  let processed = 0;
+  const totalFrames = Math.floor((total - WIN) / HOP);
+  for (let start=0; start+WIN<=total; start+=HOP) {
+    const win = samples.slice(start, start+WIN);
+
+    // RMS gate
+    let rms = 0;
+    for (let i=0; i<win.length; i++) rms += win[i]*win[i];
+    rms = Math.sqrt(rms/win.length);
+
+    let digit = null;
+    if (rms > 0.005) {
+      const pow = {};
+      for (const f of ALL_FREQS) pow[f] = goertzel(win, f, fs);
+
+      const bestRow = ROW_FREQS.reduce((a,b)=>pow[a]>pow[b]?a:b);
+      const bestCol = COL_FREQS.reduce((a,b)=>pow[a]>pow[b]?a:b);
+      const pR = pow[bestRow], pC = pow[bestCol];
+
+      const rowConf = pR / (ROW_FREQS.reduce((s,f)=>s+pow[f],0) + 1e-9);
+      const colConf = pC / (COL_FREQS.reduce((s,f)=>s+pow[f],0) + 1e-9);
+
+      if (pR > MIN_POW && pC > MIN_POW && rowConf > MIN_CONF && colConf > MIN_CONF) {
+        digit = DTMF_MAP[`${bestRow},${bestCol}`] || null;
+      }
+    }
+    frames.push(digit);
+    processed++;
+
+    // Update progress every 50 frames
+    if (processed % 50 === 0) {
+      const pct = Math.round(processed/totalFrames*100);
+      document.getElementById('progressFill').style.width = pct+'%';
+      document.getElementById('progressPct').textContent  = pct+'%';
+      document.getElementById('progressText').textContent = `Scanning frame ${processed}/${totalFrames}…`;
+      await new Promise(r=>setTimeout(r,0));  // yield to browser
+    }
+  }
+
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('progressPct').textContent  = '100%';
+
+  // ── Collapse runs: [null,null,'5','5','5','5',null,'3','3','3',...] → ['5','3',…]
+  const events = [];
+  let cur = null, runLen = 0;
+  for (const d of frames) {
+    if (d === cur) {
+      runLen++;
+    } else {
+      if (cur !== null && runLen >= 3) events.push(cur);   // need 3+ consecutive frames
+      cur = d; runLen = 1;
+    }
+  }
+  if (cur !== null && runLen >= 3) events.push(cur);
+
+  // Remove nulls (gaps)
+  const digits = events.filter(d=>d!==null).filter(d=>/[0-9]/.test(d));
+
+  log(`Frames analysed: ${frames.length}  |  Events: ${events.length}  |  Digits: ${digits.join('')}`);
+
+  setTimeout(()=>showResult(digits), 200);
+}
+
+// ─── Show result ──────────────────────────────────────────────────────────────
+function showResult(digits) {
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('decodeBtn').disabled = false;
+
+  const padded = digits.slice(0,6);
+  while (padded.length < 6) padded.push('');
+
+  for (let i=0; i<6; i++) {
+    const c = document.getElementById('rc'+i);
+    if (padded[i] !== '') {
+      c.textContent = padded[i];
+      c.className   = 'digit-cell filled appear';
+    } else {
+      c.textContent = '?';
+      c.className   = 'digit-cell';
+    }
+  }
+
+  const code = digits.slice(0,6).join('');
+  document.getElementById('codeReadonly').value = code;
+  log(`<span class="ok">✔ Decoded: ${code} (${digits.length} digit${digits.length===1?'':'s'} found)</span>`);
+
+  if (digits.length < 4) {
+    log('<span class="err">⚠ Low confidence — try again closer to mic or re-download WAV</span>');
+  }
+}
+
+function copyCode() {
+  const val = document.getElementById('codeReadonly').value;
+  navigator.clipboard.writeText(val).then(()=>{
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='⎘ Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+}
+function log(html) {
+  const el = document.getElementById('decodeLog');
+  const t  = new Date().toTimeString().slice(0,8);
+  el.innerHTML += `<span style="color:var(--muted)">[${t}]</span> ${html}<br>`;
+  el.scrollTop  = el.scrollHeight;
+}
+</script>
+</body>
+</html>
