@@ -7,59 +7,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg:        #f5f3ef;
-  --surface:   #ffffff;
-  --border:    #e0dbd2;
-  --border2:   #c8c0b4;
-  --text:      #1a1814;
-  --text-2:    #5a5248;
-  --text-3:    #9a9088;
-  --accent:    #1a3a2a;
-  --accent2:   #2d6a4f;
-  --accent-lt: #e8f4ec;
-  --err:       #c0392b;
-  --success:   #1e6b3c;
-  --success-lt:#e8f5ed;
-  --mono:      'IBM Plex Mono', monospace;
-  --display:   'Syne', sans-serif;
-  --body:      'Lora', serif;
-  --radius:    6px;
-  --shadow-lg: 0 2px 8px rgba(0,0,0,0.1), 0 12px 40px rgba(0,0,0,0.1);
+  --bg:#f5f3ef; --surface:#ffffff; --border:#e0dbd2; --border2:#c8c0b4;
+  --text:#1a1814; --text-2:#5a5248; --text-3:#9a9088;
+  --accent:#1a3a2a; --accent2:#2d6a4f; --accent-lt:#e8f4ec;
+  --err:#c0392b; --success:#1e6b3c; --success-lt:#e8f5ed;
+  --mono:'IBM Plex Mono',monospace; --display:'Syne',sans-serif; --body:'Lora',serif;
+  --radius:6px; --shadow-lg:0 2px 8px rgba(0,0,0,0.1),0 12px 40px rgba(0,0,0,0.1);
 }
-
-html, body {
-  min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--body);
-  font-size: 15px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-}
-
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image:
-    linear-gradient(var(--border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-.brand {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 52px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center;
-  padding: 0 32px; gap: 10px; z-index: 100;
-}
-
+html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px); background-size:40px 40px; opacity:0.4; pointer-events:none; }
+.brand { position:fixed; top:0; left:0; right:0; height:52px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 32px; gap:10px; z-index:100; }
 .brand-mark { width:28px; height:28px; background:var(--accent); border-radius:4px; display:flex; align-items:center; justify-content:center; }
 .brand-mark svg { width:16px; height:16px; fill:#fff; }
 .brand-name { font-family:var(--display); font-size:15px; font-weight:700; color:var(--accent); letter-spacing:0.03em; }
@@ -67,310 +25,63 @@ body::before {
 .brand-sub  { font-family:var(--mono); font-size:10px; color:var(--text-3); letter-spacing:0.1em; text-transform:uppercase; }
 .back-link  { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--accent2); text-decoration:none; border-bottom:1px dashed var(--accent2); }
 .back-link:hover { opacity:0.7; }
-
-.page {
-  min-height: 100vh;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 80px 20px 40px;
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
-  width: 100%; max-width: 520px;
-  overflow: hidden;
-}
-
-.card-header {
-  padding: 28px 32px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: flex-start; gap: 16px;
-}
-
-.icon-box {
-  width:44px; height:44px;
-  background:var(--accent-lt);
-  border:1px solid rgba(26,58,42,0.15);
-  border-radius:8px;
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
-}
+.page { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px 40px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-lg); width:100%; max-width:520px; overflow:hidden; }
+.card-header { padding:28px 32px 24px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:16px; }
+.icon-box { width:44px; height:44px; background:var(--accent-lt); border:1px solid rgba(26,58,42,0.15); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .icon-box svg { width:22px; height:22px; fill:var(--accent2); }
-
 .card-header-text h1 { font-family:var(--display); font-size:19px; font-weight:700; color:var(--text); line-height:1.2; margin-bottom:4px; }
 .card-header-text p  { font-size:13px; color:var(--text-2); font-family:var(--body); font-style:italic; }
-
-.card-body { padding: 28px 32px; }
-
-/* ── Drop zone ── */
-.drop-zone {
-  border: 2px dashed var(--border2);
-  border-radius: 8px;
-  padding: 36px 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--bg);
-  margin-bottom: 24px;
-  position: relative;
-}
-
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--accent2);
-  background: var(--accent-lt);
-}
-
-.drop-zone input[type=file] {
-  position: absolute; inset: 0;
-  opacity: 0; cursor: pointer; width: 100%; height: 100%;
-}
-
-.drop-icon {
-  width: 48px; height: 48px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 12px;
-}
-
-.drop-icon svg { width: 24px; height: 24px; fill: var(--text-3); }
-
-.drop-title {
-  font-family: var(--display);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-
-.drop-sub {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-3);
-  letter-spacing: 0.05em;
-}
-
-.drop-zone.has-file .drop-icon svg { fill: var(--accent2); }
-.drop-zone.has-file { border-color: var(--accent2); background: var(--accent-lt); }
-
-/* ── Waveform ── */
-.waveform-wrap {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  margin-bottom: 20px;
-}
-
-.waveform-label {
-  font-family: var(--mono); font-size: 9px;
-  color: var(--text-3); letter-spacing: 0.15em;
-  text-transform: uppercase; margin-bottom: 6px;
-  display: flex; justify-content: space-between;
-}
-
+.card-body { padding:28px 32px; }
+.drop-zone { border:2px dashed var(--border2); border-radius:8px; padding:36px 24px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--bg); margin-bottom:24px; position:relative; }
+.drop-zone:hover,.drop-zone.drag-over { border-color:var(--accent2); background:var(--accent-lt); }
+.drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.drop-icon { width:48px; height:48px; background:var(--surface); border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+.drop-icon svg { width:24px; height:24px; fill:var(--text-3); }
+.drop-title { font-family:var(--display); font-size:14px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.drop-sub { font-family:var(--mono); font-size:11px; color:var(--text-3); letter-spacing:0.05em; }
+.drop-zone.has-file .drop-icon svg { fill:var(--accent2); }
+.drop-zone.has-file { border-color:var(--accent2); background:var(--accent-lt); }
+.waveform-wrap { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:20px; display:none; }
+.waveform-label { font-family:var(--mono); font-size:9px; color:var(--text-3); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; }
 #wave-canvas { width:100%; height:52px; display:block; }
-
-/* ── Decode button ── */
-.btn-decode {
-  width: 100%;
-  padding: 13px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius);
-  font-family: var(--display);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-bottom: 20px;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-
-.btn-decode:hover { background: var(--accent2); }
-.btn-decode:active { transform: scale(0.98); }
-.btn-decode:disabled { background: var(--border2); cursor: not-allowed; }
+.btn-decode { width:100%; padding:13px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius); font-family:var(--display); font-size:14px; font-weight:700; letter-spacing:0.04em; cursor:pointer; transition:all 0.15s; margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-decode:hover { background:var(--accent2); }
+.btn-decode:active { transform:scale(0.98); }
+.btn-decode:disabled { background:var(--border2); cursor:not-allowed; }
 .btn-decode svg { width:16px; height:16px; fill:#fff; }
-
-/* ── Progress ── */
-.progress-wrap {
-  height: 3px;
-  background: var(--border);
-  border-radius: 2px;
-  margin-bottom: 20px;
-  overflow: hidden;
-  display: none;
-}
-
-#progress-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--accent2), #52b788);
-  border-radius: 2px;
-  transition: width 0.1s linear;
-}
-
-/* ── Result ── */
-.result-section { display: none; }
-
-.result-label {
-  font-family: var(--mono); font-size: 10px;
-  color: var(--text-3); letter-spacing: 0.15em;
-  text-transform: uppercase; margin-bottom: 10px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-
-.confidence-badge {
-  font-family: var(--mono); font-size: 10px;
-  padding: 2px 8px; border-radius: 10px;
-  background: var(--accent-lt); color: var(--accent2);
-  border: 1px solid rgba(45,106,79,0.2);
-}
-
-/* ── Digit result display ── */
-.digit-row {
-  display: flex; gap: 8px;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.digit-box {
-  width: 52px; height: 64px;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 2px;
-  animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
-}
-
-@keyframes slideUp {
-  from { opacity:0; transform:translateY(12px) scale(0.9); }
-  to   { opacity:1; transform:translateY(0) scale(1); }
-}
-
-.digit-box .d-num {
-  font-family: var(--mono);
-  font-size: 26px;
-  font-weight: 500;
-  color: var(--accent);
-  line-height: 1;
-}
-
-.digit-box .d-idx {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--text-3);
-  letter-spacing: 0.1em;
-}
-
-/* ── Copy area ── */
-.copy-area {
-  display: flex; gap: 8px; margin-bottom: 16px;
-}
-
-.code-display {
-  flex: 1;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 11px 16px;
-  font-family: var(--mono);
-  font-size: 22px;
-  letter-spacing: 0.25em;
-  color: var(--accent);
-  font-weight: 500;
-  user-select: all;
-}
-
-.btn-copy {
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 11px 16px;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-2);
-  transition: all 0.15s;
-  display: flex; align-items: center; gap: 6px;
-  white-space: nowrap;
-}
-
-.btn-copy:hover { border-color: var(--accent2); color: var(--accent2); }
+.progress-wrap { height:3px; background:var(--border); border-radius:2px; margin-bottom:20px; overflow:hidden; display:none; }
+#progress-bar { height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),#52b788); border-radius:2px; transition:width 0.1s linear; }
+.result-section { display:none; }
+.result-label { font-family:var(--mono); font-size:10px; color:var(--text-3); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+.confidence-badge { font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:10px; background:var(--accent-lt); color:var(--accent2); border:1px solid rgba(45,106,79,0.2); }
+.digit-row { display:flex; gap:8px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; }
+.digit-box { width:52px; height:64px; background:var(--bg); border:1.5px solid var(--border); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+@keyframes slideUp { from{opacity:0;transform:translateY(12px) scale(0.9)} to{opacity:1;transform:translateY(0) scale(1)} }
+.digit-box .d-num { font-family:var(--mono); font-size:26px; font-weight:500; color:var(--accent); line-height:1; }
+.digit-box .d-idx { font-family:var(--mono); font-size:8px; color:var(--text-3); letter-spacing:0.1em; }
+.copy-area { display:flex; gap:8px; margin-bottom:16px; }
+.code-display { flex:1; background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:11px 16px; font-family:var(--mono); font-size:22px; letter-spacing:0.25em; color:var(--accent); font-weight:500; user-select:all; }
+.btn-copy { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:11px 16px; cursor:pointer; font-family:var(--mono); font-size:12px; color:var(--text-2); transition:all 0.15s; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.btn-copy:hover { border-color:var(--accent2); color:var(--accent2); }
 .btn-copy svg { width:14px; height:14px; fill:currentColor; }
-.btn-copy.copied { background: var(--success-lt); border-color: #a8d5b5; color: var(--success); }
-
-/* ── Debug table ── */
-.debug-wrap {
-  margin-top: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.debug-header {
-  padding: 8px 14px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--text-3);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  cursor: pointer;
-  display: flex; justify-content: space-between;
-}
-
-.debug-body {
-  display: none;
-  padding: 12px 14px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-2);
-  line-height: 1.8;
-  overflow-x: auto;
-}
-
-.debug-body.open { display: block; }
-
-.freq-row { display: flex; gap: 8px; align-items: center; margin-bottom: 3px; }
+.btn-copy.copied { background:var(--success-lt); border-color:#a8d5b5; color:var(--success); }
+.debug-wrap { margin-top:16px; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.debug-header { padding:8px 14px; background:var(--bg); border-bottom:1px solid var(--border); font-family:var(--mono); font-size:9px; color:var(--text-3); letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; display:flex; justify-content:space-between; }
+.debug-body { display:none; padding:12px 14px; font-family:var(--mono); font-size:11px; color:var(--text-2); line-height:1.8; overflow-x:auto; }
+.debug-body.open { display:block; }
+.freq-row { display:flex; gap:8px; align-items:center; margin-bottom:4px; }
 .freq-bar-wrap { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
-.freq-bar { height:100%; background:var(--accent2); border-radius:3px; transition:width 0.3s; }
-
-/* ── Error ── */
-.error-box {
-  background: #fef0ef; border: 1px solid #f5b7b1;
-  border-radius: var(--radius); padding: 12px 16px;
-  color: var(--err); font-size: 13px; display: none;
-  align-items: center; gap: 8px; margin-bottom: 16px;
-}
+.freq-bar { height:100%; background:var(--accent2); border-radius:3px; }
+.error-box { background:#fef0ef; border:1px solid #f5b7b1; border-radius:var(--radius); padding:12px 16px; color:var(--err); font-size:13px; display:none; align-items:center; gap:8px; margin-bottom:16px; }
 .error-box svg { width:16px; height:16px; fill:currentColor; flex-shrink:0; }
-
-.card-footer {
-  padding: 14px 32px;
-  border-top: 1px solid var(--border);
-  background: var(--bg);
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text-3);
-  letter-spacing: 0.05em;
-  display: flex; justify-content: space-between; align-items: center;
-}
+.card-footer { padding:14px 32px; border-top:1px solid var(--border); background:var(--bg); font-family:var(--mono); font-size:10px; color:var(--text-3); letter-spacing:0.05em; display:flex; justify-content:space-between; align-items:center; }
 </style>
 </head>
 <body>
 
 <div class="brand">
-  <div class="brand-mark">
-    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-  </div>
+  <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></div>
   <span class="brand-name">ToneGuard</span>
   <div class="brand-sep"></div>
   <span class="brand-sub">Decoder</span>
@@ -392,9 +103,8 @@ body::before {
 
     <div class="card-body">
 
-      <!-- Drop zone -->
       <div class="drop-zone" id="drop-zone">
-        <input type="file" id="file-input" accept=".wav,audio/wav">
+        <input type="file" id="file-input" accept=".wav,audio/wav,audio/*">
         <div class="drop-icon">
           <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6zm-2 16a2 2 0 110-4 2 2 0 010 4z"/></svg>
         </div>
@@ -402,8 +112,7 @@ body::before {
         <div class="drop-sub">or click to browse · .wav files only</div>
       </div>
 
-      <!-- Waveform preview -->
-      <div class="waveform-wrap" id="wave-wrap" style="display:none">
+      <div class="waveform-wrap" id="wave-wrap">
         <div class="waveform-label">
           <span>Waveform Preview</span>
           <span id="wave-info">—</span>
@@ -411,33 +120,26 @@ body::before {
         <canvas id="wave-canvas"></canvas>
       </div>
 
-      <!-- Error -->
       <div class="error-box" id="error-box">
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
         <span id="error-text">Error</span>
       </div>
 
-      <!-- Decode button -->
       <button class="btn-decode" id="btn-decode" disabled>
         <svg viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
         Decode DTMF Tones
       </button>
 
-      <!-- Progress -->
       <div class="progress-wrap" id="progress-wrap">
         <div id="progress-bar"></div>
       </div>
 
-      <!-- Result -->
       <div class="result-section" id="result-section">
-
         <div class="result-label">
           <span>Decoded Digits</span>
           <span class="confidence-badge" id="confidence-badge">—</span>
         </div>
-
         <div class="digit-row" id="digit-row"></div>
-
         <div class="copy-area">
           <div class="code-display" id="code-display">——————</div>
           <button class="btn-copy" id="btn-copy">
@@ -445,15 +147,12 @@ body::before {
             Copy Code
           </button>
         </div>
-
         <div class="debug-wrap">
           <div class="debug-header" id="debug-toggle">
-            <span>Signal Analysis</span>
-            <span>▼</span>
+            <span>Signal Analysis</span><span id="debug-arrow">▼</span>
           </div>
           <div class="debug-body" id="debug-body"></div>
         </div>
-
       </div>
 
     </div>
@@ -462,12 +161,11 @@ body::before {
       <span>ToneGuard · Goertzel DTMF Decoder</span>
       <span>No data sent to any server</span>
     </div>
-
   </div>
 </div>
 
 <script>
-// ── DTMF frequency table ──────────────────────────────────────
+// ── DTMF table ────────────────────────────────────────────────
 const ROW_FREQS = [697, 770, 852, 941];
 const COL_FREQS = [1209, 1336, 1477, 1633];
 const DTMF_MAP  = [
@@ -477,160 +175,160 @@ const DTMF_MAP  = [
   ['*','0','#','D']
 ];
 
-// ── Goertzel algorithm ────────────────────────────────────────
-// Computes the energy at one specific frequency in a sample block.
-// Far more efficient than FFT when you only need a few frequencies.
+// ── Goertzel ──────────────────────────────────────────────────
+// Returns energy (power) at targetFreq within samples block
 function goertzel(samples, targetFreq, sampleRate) {
-  const N       = samples.length;
-  const k       = Math.round(N * targetFreq / sampleRate);
-  const omega   = 2 * Math.PI * k / N;
-  const coeff   = 2 * Math.cos(omega);
+  const N     = samples.length;
+  const k     = Math.round(N * targetFreq / sampleRate);
+  const omega = 2 * Math.PI * k / N;
+  const coeff = 2 * Math.cos(omega);
   let q1 = 0, q2 = 0;
-
   for (let i = 0; i < N; i++) {
     const q0 = samples[i] + coeff * q1 - q2;
     q2 = q1; q1 = q0;
   }
-
-  // Return power (magnitude squared)
   return q1*q1 + q2*q2 - q1*q2*coeff;
 }
 
-// ── Detect one digit in a sample window ───────────────────────
+// ── Detect digit in one window ────────────────────────────────
 function detectDigit(samples, sampleRate) {
-  const rowEnergies = ROW_FREQS.map(f => goertzel(samples, f, sampleRate));
-  const colEnergies = COL_FREQS.map(f => goertzel(samples, f, sampleRate));
+  const rowE = ROW_FREQS.map(f => goertzel(samples, f, sampleRate));
+  const colE = COL_FREQS.map(f => goertzel(samples, f, sampleRate));
 
-  const maxRow = Math.max(...rowEnergies);
-  const maxCol = Math.max(...colEnergies);
-  const total  = rowEnergies.reduce((s,v)=>s+v,0) + colEnergies.reduce((s,v)=>s+v,0);
+  const totalE = [...rowE, ...colE].reduce((s,v) => s+v, 0);
 
-  // Silence threshold — if total energy too low, return null
-  if (total < 1e6) return { digit: null, rowE: rowEnergies, colE: colEnergies };
+  // Dynamic noise floor: signal must have meaningful energy
+  // Use average energy as baseline — target freqs must dominate
+  const avgE = totalE / 8;
 
-  // Dominant frequencies must be significantly stronger than others
-  const rowIdx = rowEnergies.indexOf(maxRow);
-  const colIdx = colEnergies.indexOf(maxCol);
+  const maxRow = Math.max(...rowE);
+  const maxCol = Math.max(...colE);
 
-  // Check dominance ratio: strongest must be > 2x second strongest
-  const rowSorted = [...rowEnergies].sort((a,b)=>b-a);
-  const colSorted = [...colEnergies].sort((a,b)=>b-a);
+  // Both dominant freqs must be well above average energy
+  if (maxRow < avgE * 3) return null;
+  if (maxCol < avgE * 3) return null;
 
-  if (rowSorted[0] < rowSorted[1] * 1.5) return { digit: null, rowE: rowEnergies, colE: colEnergies };
-  if (colSorted[0] < colSorted[1] * 1.5) return { digit: null, rowE: rowEnergies, colE: colEnergies };
+  // Dominant freq must be clearly strongest in its group
+  const rowSorted = [...rowE].sort((a,b) => b-a);
+  const colSorted = [...colE].sort((a,b) => b-a);
+
+  // Ratio of strongest to second strongest (must be > 1.3)
+  const rowRatio = rowSorted[1] > 0 ? rowSorted[0] / rowSorted[1] : 999;
+  const colRatio = colSorted[1] > 0 ? colSorted[0] / colSorted[1] : 999;
+
+  if (rowRatio < 1.3 || colRatio < 1.3) return null;
+
+  const rowIdx = rowE.indexOf(maxRow);
+  const colIdx = colE.indexOf(maxCol);
 
   return {
-    digit:  DTMF_MAP[rowIdx][colIdx],
+    digit:      DTMF_MAP[rowIdx][colIdx],
     rowIdx, colIdx,
-    rowE: rowEnergies, colE: colEnergies,
-    confidence: Math.min(rowSorted[0]/rowSorted[1], colSorted[0]/colSorted[1])
+    confidence: Math.min(rowRatio, colRatio)
   };
 }
 
-// ── Parse WAV file ────────────────────────────────────────────
+// ── Parse WAV ─────────────────────────────────────────────────
 function parseWav(arrayBuffer) {
-  const view       = new DataView(arrayBuffer);
-  const riff       = String.fromCharCode(...[0,1,2,3].map(i=>view.getUint8(i)));
-  if (riff !== 'RIFF') throw new Error('Not a valid WAV file');
+  const view = new DataView(arrayBuffer);
 
-  const audioFmt   = view.getUint16(20, true);
-  if (audioFmt !== 1) throw new Error('Only PCM WAV supported (no compression)');
+  // Verify RIFF header
+  const riff = String.fromCharCode(view.getUint8(0),view.getUint8(1),view.getUint8(2),view.getUint8(3));
+  if (riff !== 'RIFF') throw new Error('Not a valid WAV file. Please upload the downloaded ToneGuard WAV.');
 
   const channels   = view.getUint16(22, true);
   const sampleRate = view.getUint32(24, true);
   const bitsPerSmp = view.getUint16(34, true);
 
-  // Find data chunk
-  let dataOffset = 12;
-  while (dataOffset < view.byteLength - 8) {
-    const id  = String.fromCharCode(...[0,1,2,3].map(i=>view.getUint8(dataOffset+i)));
-    const sz  = view.getUint32(dataOffset+4, true);
-    if (id === 'data') { dataOffset += 8; break; }
-    dataOffset += 8 + sz;
+  // Find 'data' chunk — handles files with extra chunks (e.g. LIST)
+  let offset = 12;
+  let dataOffset = -1, dataSize = 0;
+  while (offset < view.byteLength - 8) {
+    const id = String.fromCharCode(
+      view.getUint8(offset),view.getUint8(offset+1),
+      view.getUint8(offset+2),view.getUint8(offset+3)
+    );
+    const sz = view.getUint32(offset+4, true);
+    if (id === 'data') { dataOffset = offset + 8; dataSize = sz; break; }
+    offset += 8 + sz;
   }
+  if (dataOffset === -1) throw new Error('Could not find audio data in WAV file.');
 
-  // Read samples (take left channel only)
-  const samples = [];
-  const stride  = channels * (bitsPerSmp / 8);
-  for (let i = dataOffset; i + stride <= view.byteLength; i += stride) {
+  // Read samples — mono only (left channel if stereo)
+  const bytesPerSample = bitsPerSmp / 8;
+  const frameSize      = channels * bytesPerSample;
+  const numFrames      = Math.floor(dataSize / frameSize);
+  const samples        = new Float32Array(numFrames);
+
+  for (let i = 0; i < numFrames; i++) {
+    const byteOff = dataOffset + i * frameSize;
     let val;
-    if (bitsPerSmp === 16) val = view.getInt16(i, true) / 32768;
-    else if (bitsPerSmp === 8) val = (view.getUint8(i) - 128) / 128;
-    else if (bitsPerSmp === 32) val = view.getInt32(i, true) / 2147483648;
+    if      (bitsPerSmp === 16) val = view.getInt16(byteOff, true) / 32768.0;
+    else if (bitsPerSmp === 8)  val = (view.getUint8(byteOff) - 128) / 128.0;
+    else if (bitsPerSmp === 32) val = view.getInt32(byteOff, true) / 2147483648.0;
     else val = 0;
-    samples.push(val);
+    samples[i] = val;
   }
 
   return { samples, sampleRate, channels, bitsPerSmp };
 }
 
-// ── Main decode ───────────────────────────────────────────────
+// ── Main DTMF decode ──────────────────────────────────────────
 function decodeDTMF(samples, sampleRate, onProgress) {
-  // Window size: 40ms — good balance for Goertzel accuracy
-  const windowMs   = 40;
-  const windowSamp = Math.floor(sampleRate * windowMs / 1000);
-  const stepSamp   = Math.floor(windowSamp / 2);   // 50% overlap
+  // Use 80ms windows — enough cycles even for lowest DTMF freq (697Hz = 55 cycles)
+  // Step = 20ms (75% overlap) for fine resolution
+  const windowSamp = Math.floor(sampleRate * 0.08);  // 80ms
+  const stepSamp   = Math.floor(sampleRate * 0.02);  // 20ms step
 
-  const rawDigits  = [];
-  const total      = Math.floor((samples.length - windowSamp) / stepSamp);
+  const frames = [];
+  const total  = Math.floor((samples.length - windowSamp) / stepSamp);
 
-  for (let i = 0; i + windowSamp <= samples.length; i += stepSamp) {
-    const window = samples.slice(i, i + windowSamp);
-    const result = detectDigit(window, sampleRate);
-    rawDigits.push(result);
-    if (i % (stepSamp * 20) === 0) onProgress(i / samples.length * 100);
+  for (let i = 0; i * stepSamp + windowSamp <= samples.length; i++) {
+    const start  = i * stepSamp;
+    const window = samples.subarray(start, start + windowSamp);
+    frames.push(detectDigit(window, sampleRate));
+    if (i % 50 === 0) onProgress((i / total) * 100);
   }
 
-  // Collapse consecutive same-digit runs → single digit
-  // Filter out nulls first, then collapse runs
+  // Collapse runs into single digits
+  // A "digit event" = run of same digit for at least 2 consecutive frames
   const digits    = [];
   const debugInfo = [];
-  let   lastDigit = null;
-  let   runCount  = 0;
-  let   runConf   = [];
+  let lastDigit   = null;
+  let runFrames   = 0;
+  let runConfs    = [];
 
-  rawDigits.forEach(r => {
-    if (r.digit === null) {
-      if (lastDigit !== null && runCount >= 2) {
-        // End of a run — commit it
-        const avgConf = runConf.reduce((s,v)=>s+v,0)/runConf.length;
-        digits.push(lastDigit);
-        debugInfo.push({ digit: lastDigit, frames: runCount, confidence: avgConf });
-      }
-      lastDigit = null;
-      runCount  = 0;
-      runConf   = [];
-    } else if (r.digit === lastDigit) {
-      runCount++;
-      if (r.confidence) runConf.push(r.confidence);
+  function commitRun() {
+    if (lastDigit && runFrames >= 2) {
+      const avgConf = runConfs.reduce((s,v)=>s+v,0) / runConfs.length;
+      digits.push(lastDigit);
+      debugInfo.push({ digit: lastDigit, frames: runFrames, confidence: avgConf });
+    }
+  }
+
+  frames.forEach(result => {
+    const d = result ? result.digit : null;
+    if (d === lastDigit && d !== null) {
+      runFrames++;
+      if (result.confidence) runConfs.push(result.confidence);
     } else {
-      if (lastDigit !== null && runCount >= 2) {
-        const avgConf = runConf.reduce((s,v)=>s+v,0)/runConf.length;
-        digits.push(lastDigit);
-        debugInfo.push({ digit: lastDigit, frames: runCount, confidence: avgConf });
-      }
-      lastDigit = r.digit;
-      runCount  = 1;
-      runConf   = r.confidence ? [r.confidence] : [];
+      commitRun();
+      lastDigit = d;
+      runFrames = d ? 1 : 0;
+      runConfs  = d && result.confidence ? [result.confidence] : [];
     }
   });
-
-  // Flush last run
-  if (lastDigit !== null && runCount >= 2) {
-    const avgConf = runConf.reduce((s,v)=>s+v,0)/runConf.length;
-    digits.push(lastDigit);
-    debugInfo.push({ digit: lastDigit, frames: runCount, confidence: avgConf });
-  }
+  commitRun();
 
   return { digits, debugInfo };
 }
 
-// ── Draw waveform preview ─────────────────────────────────────
+// ── Draw waveform ─────────────────────────────────────────────
 function drawWaveform(samples, sampleRate) {
   const canvas = document.getElementById('wave-canvas');
-  const ctx    = canvas.getContext('2d');
   canvas.width  = canvas.offsetWidth * devicePixelRatio;
   canvas.height = canvas.offsetHeight * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
 
   ctx.clearRect(0,0,W,H);
@@ -638,40 +336,48 @@ function drawWaveform(samples, sampleRate) {
   ctx.lineWidth   = 1.5;
   ctx.shadowColor = '#2d6a4f';
   ctx.shadowBlur  = 3;
+  ctx.beginPath();
 
   const step = Math.ceil(samples.length / W);
-  ctx.beginPath();
-  for (let i = 0; i < W; i++) {
-    let max = 0;
-    for (let j = i*step; j < (i+1)*step && j < samples.length; j++) {
-      if (Math.abs(samples[j]) > max) max = Math.abs(samples[j]);
+  for (let x = 0; x < W; x++) {
+    let peak = 0;
+    for (let j = x*step; j < (x+1)*step && j < samples.length; j++) {
+      if (Math.abs(samples[j]) > peak) peak = Math.abs(samples[j]);
     }
-    const y = (1 - max) * H / 2;
-    i === 0 ? ctx.moveTo(0, H/2) : ctx.lineTo(i, H/2 - max * H/2);
+    const y = H/2 - peak * (H/2 - 2);
+    x === 0 ? ctx.moveTo(0, H/2) : ctx.lineTo(x, y);
   }
   ctx.stroke();
   ctx.shadowBlur = 0;
 
   document.getElementById('wave-info').textContent =
-    `${(samples.length/sampleRate).toFixed(2)}s · ${sampleRate}Hz · ${(samples.length/1000).toFixed(0)}k samples`;
+    `${(samples.length/sampleRate).toFixed(2)}s · ${sampleRate} Hz · ${bitsPerSmpLabel} bit`;
 }
 
-// ── UI helpers ────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────
+let loadedSamples    = null;
+let loadedSampleRate = null;
+let bitsPerSmpLabel  = 16;
+
 function showError(msg) {
   const box = document.getElementById('error-box');
   document.getElementById('error-text').textContent = msg;
   box.style.display = 'flex';
-  setTimeout(() => box.style.display = 'none', 5000);
+}
+
+function hideError() {
+  document.getElementById('error-box').style.display = 'none';
 }
 
 function showResult(digits, debugInfo) {
   const section = document.getElementById('result-section');
   section.style.display = 'block';
 
-  const code    = digits.join('');
-  const row     = document.getElementById('digit-row');
-  row.innerHTML = '';
+  const code = digits.join('');
+  document.getElementById('code-display').textContent = code || '——————';
 
+  const row = document.getElementById('digit-row');
+  row.innerHTML = '';
   digits.forEach((d, i) => {
     const box = document.createElement('div');
     box.className = 'digit-box';
@@ -680,58 +386,46 @@ function showResult(digits, debugInfo) {
     row.appendChild(box);
   });
 
-  document.getElementById('code-display').textContent = code || '——————';
-
   const avgConf = debugInfo.length
-    ? debugInfo.reduce((s,d)=>s+d.confidence,0)/debugInfo.length
-    : 0;
+    ? debugInfo.reduce((s,d) => s+d.confidence, 0) / debugInfo.length : 0;
   document.getElementById('confidence-badge').textContent =
-    `${digits.length} digits · ${(Math.min(avgConf, 99.9)).toFixed(1)}× confidence`;
+    `${digits.length} digit${digits.length!==1?'s':''} · confidence ${avgConf.toFixed(1)}×`;
 
   // Debug table
-  const dbg = document.getElementById('debug-body');
-  dbg.innerHTML = debugInfo.map(d =>
-    `<div class="freq-row">
-      <span style="width:12px;color:var(--accent);font-weight:600">${d.digit}</span>
-      <span style="width:60px;color:var(--text-3)">${d.frames} frames</span>
+  const maxFrames = Math.max(...debugInfo.map(d=>d.frames), 1);
+  document.getElementById('debug-body').innerHTML = debugInfo.map((d,i) => `
+    <div class="freq-row">
+      <span style="width:18px;color:var(--accent);font-weight:600">${d.digit}</span>
+      <span style="width:24px;color:var(--text-3)">#${i+1}</span>
       <div class="freq-bar-wrap">
-        <div class="freq-bar" style="width:${Math.min(d.confidence/10*100,100)}%"></div>
+        <div class="freq-bar" style="width:${Math.round(d.frames/maxFrames*100)}%"></div>
       </div>
-      <span style="width:40px;text-align:right">${d.confidence.toFixed(1)}×</span>
-    </div>`
-  ).join('');
+      <span style="width:56px;text-align:right">${d.frames} frames</span>
+      <span style="width:48px;text-align:right">${d.confidence.toFixed(1)}×</span>
+    </div>`).join('');
 }
 
-// ── State ─────────────────────────────────────────────────────
-let loadedSamples    = null;
-let loadedSampleRate = null;
-
-// ── File handling ─────────────────────────────────────────────
+// ── File load ─────────────────────────────────────────────────
 function handleFile(file) {
-  if (!file || !file.name.endsWith('.wav')) {
-    showError('Please upload a .wav file.');
-    return;
-  }
+  if (!file) return;
+  hideError();
+  document.getElementById('result-section').style.display = 'none';
 
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const { samples, sampleRate } = parseWav(e.target.result);
+      const { samples, sampleRate, bitsPerSmp } = parseWav(e.target.result);
       loadedSamples    = samples;
       loadedSampleRate = sampleRate;
+      bitsPerSmpLabel  = bitsPerSmp;
 
-      // Show waveform
       document.getElementById('wave-wrap').style.display = 'block';
       drawWaveform(samples, sampleRate);
 
-      // Update drop zone
       const dz = document.getElementById('drop-zone');
       dz.classList.add('has-file');
-      document.getElementById('drop-title').textContent = file.name;
-
-      // Enable decode
+      document.getElementById('drop-title').textContent = `✓ ${file.name}`;
       document.getElementById('btn-decode').disabled = false;
-      document.getElementById('result-section').style.display = 'none';
 
     } catch(err) {
       showError(err.message);
@@ -740,48 +434,45 @@ function handleFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
-document.getElementById('file-input').addEventListener('change', e => {
-  handleFile(e.target.files[0]);
-});
+document.getElementById('file-input').addEventListener('change', e => handleFile(e.target.files[0]));
 
 const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e => {
   e.preventDefault();
   dz.classList.remove('drag-over');
   handleFile(e.dataTransfer.files[0]);
 });
 
-// ── Decode button ─────────────────────────────────────────────
+// ── Decode ────────────────────────────────────────────────────
 document.getElementById('btn-decode').addEventListener('click', () => {
   if (!loadedSamples) return;
-
+  hideError();
   document.getElementById('btn-decode').disabled = true;
   document.getElementById('progress-wrap').style.display = 'block';
   document.getElementById('result-section').style.display = 'none';
 
-  // Run in next frame so UI updates
   setTimeout(() => {
     try {
       const { digits, debugInfo } = decodeDTMF(
-        loadedSamples,
-        loadedSampleRate,
+        loadedSamples, loadedSampleRate,
         pct => { document.getElementById('progress-bar').style.width = pct + '%'; }
       );
 
       document.getElementById('progress-bar').style.width = '100%';
+
       setTimeout(() => {
         document.getElementById('progress-wrap').style.display = 'none';
         document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('btn-decode').disabled = false;
 
         if (digits.length === 0) {
-          showError('No DTMF tones detected. Make sure the WAV contains ToneGuard audio.');
+          showError('No DTMF tones detected. Try re-downloading the WAV from captcha.html and uploading again.');
         } else {
           showResult(digits, debugInfo);
         }
-        document.getElementById('btn-decode').disabled = false;
-      }, 400);
+      }, 300);
 
     } catch(err) {
       showError(err.message);
@@ -791,7 +482,7 @@ document.getElementById('btn-decode').addEventListener('click', () => {
   }, 50);
 });
 
-// ── Copy button ───────────────────────────────────────────────
+// ── Copy ──────────────────────────────────────────────────────
 document.getElementById('btn-copy').addEventListener('click', function() {
   const code = document.getElementById('code-display').textContent;
   navigator.clipboard.writeText(code).then(() => {
@@ -806,7 +497,10 @@ document.getElementById('btn-copy').addEventListener('click', function() {
 
 // ── Debug toggle ──────────────────────────────────────────────
 document.getElementById('debug-toggle').addEventListener('click', () => {
-  document.getElementById('debug-body').classList.toggle('open');
+  const body  = document.getElementById('debug-body');
+  const arrow = document.getElementById('debug-arrow');
+  body.classList.toggle('open');
+  arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
 });
 </script>
 </body>
