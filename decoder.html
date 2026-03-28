@@ -3,694 +3,811 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tone Decoder — DSP CAPTCHA</title>
+<title>ToneGuard — Decoder</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap');
-
-:root {
-  --bg: #0d1117;
-  --surface: #161b22;
-  --panel: #1c2128;
-  --border: #30363d;
-  --accent: #58a6ff;
-  --accent2: #3fb950;
-  --warn: #d29922;
-  --danger: #f85149;
-  --text: #c9d1d9;
-  --muted: #8b949e;
-}
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
+:root {
+  --bg:        #f5f3ef;
+  --surface:   #ffffff;
+  --border:    #e0dbd2;
+  --border2:   #c8c0b4;
+  --text:      #1a1814;
+  --text-2:    #5a5248;
+  --text-3:    #9a9088;
+  --accent:    #1a3a2a;
+  --accent2:   #2d6a4f;
+  --accent-lt: #e8f4ec;
+  --err:       #c0392b;
+  --success:   #1e6b3c;
+  --success-lt:#e8f5ed;
+  --mono:      'IBM Plex Mono', monospace;
+  --display:   'Syne', sans-serif;
+  --body:      'Lora', serif;
+  --radius:    6px;
+  --shadow-lg: 0 2px 8px rgba(0,0,0,0.1), 0 12px 40px rgba(0,0,0,0.1);
+}
+
+html, body {
+  min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.brand {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 32px; gap: 10px; z-index: 100;
+}
+
+.brand-mark { width:28px; height:28px; background:var(--accent); border-radius:4px; display:flex; align-items:center; justify-content:center; }
+.brand-mark svg { width:16px; height:16px; fill:#fff; }
+.brand-name { font-family:var(--display); font-size:15px; font-weight:700; color:var(--accent); letter-spacing:0.03em; }
+.brand-sep  { width:1px; height:20px; background:var(--border); margin:0 8px; }
+.brand-sub  { font-family:var(--mono); font-size:10px; color:var(--text-3); letter-spacing:0.1em; text-transform:uppercase; }
+.back-link  { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--accent2); text-decoration:none; border-bottom:1px dashed var(--accent2); }
+.back-link:hover { opacity:0.7; }
+
+.page {
   min-height: 100vh;
   display: flex; flex-direction: column;
-  align-items: center;
-  padding: 2.5rem 1rem 4rem;
+  align-items: center; justify-content: center;
+  padding: 80px 20px 40px;
 }
 
-.wrap { width: 100%; max-width: 560px; }
-
-/* Header */
-.page-header { margin-bottom: 2rem; }
-.back-link {
-  font-size: 0.65rem;
-  color: var(--muted);
-  text-decoration: none;
-  letter-spacing: 0.1em;
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  margin-bottom: 1rem;
-  transition: color 0.15s;
-}
-.back-link:hover { color: var(--accent); }
-h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.5rem; font-weight: 800;
-  color: var(--text);
-  margin-bottom: 0.3rem;
-}
-h1 span { color: var(--accent); }
-.page-sub { font-size: 0.68rem; color: var(--muted); line-height: 1.6; }
-
-/* Cards */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 520px;
   overflow: hidden;
 }
+
 .card-header {
-  padding: 0.75rem 1.2rem;
+  padding: 28px 32px 24px;
   border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 0.5rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  text-transform: uppercase;
-  background: var(--panel);
+  display: flex; align-items: flex-start; gap: 16px;
 }
-.card-header .dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--border);
-}
-.card-header .dot.active { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
-.card-body { padding: 1.2rem; }
 
-/* ── Method tabs ── */
-.tabs {
-  display: flex; gap: 0; margin-bottom: 1.2rem;
-  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+.icon-box {
+  width:44px; height:44px;
+  background:var(--accent-lt);
+  border:1px solid rgba(26,58,42,0.15);
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
-.tab-btn {
-  flex: 1; padding: 0.6rem;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem; font-weight: 600;
-  letter-spacing: 0.08em;
-  cursor: pointer; border: none;
-  background: transparent;
-  color: var(--muted);
-  transition: all 0.15s;
-  border-right: 1px solid var(--border);
-}
-.tab-btn:last-child { border-right: none; }
-.tab-btn.active { background: var(--accent); color: #fff; }
-.tab-btn:not(.active):hover { background: var(--panel); color: var(--text); }
+.icon-box svg { width:22px; height:22px; fill:var(--accent2); }
 
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+.card-header-text h1 { font-family:var(--display); font-size:19px; font-weight:700; color:var(--text); line-height:1.2; margin-bottom:4px; }
+.card-header-text p  { font-size:13px; color:var(--text-2); font-family:var(--body); font-style:italic; }
 
-/* ── Upload zone ── */
+.card-body { padding: 28px 32px; }
+
+/* ── Drop zone ── */
 .drop-zone {
-  border: 2px dashed var(--border);
-  border-radius: 6px;
-  padding: 2rem 1rem;
+  border: 2px dashed var(--border2);
+  border-radius: 8px;
+  padding: 36px 24px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
+  background: var(--bg);
+  margin-bottom: 24px;
   position: relative;
 }
+
 .drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--accent);
-  background: rgba(88,166,255,0.05);
+  border-color: var(--accent2);
+  background: var(--accent-lt);
 }
-.drop-zone input {
+
+.drop-zone input[type=file] {
   position: absolute; inset: 0;
   opacity: 0; cursor: pointer; width: 100%; height: 100%;
 }
-.drop-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-.drop-text { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
-.drop-text strong { color: var(--accent); }
 
-/* File info */
-.file-info {
-  display: none;
-  padding: 0.7rem 0.9rem;
-  background: var(--panel);
+.drop-icon {
+  width: 48px; height: 48px;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 5px;
-  font-size: 0.68rem;
-  color: var(--muted);
-  margin-top: 0.8rem;
-  display: none;
-  align-items: center; gap: 0.5rem;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
 }
-.file-info .fname { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ── Mic zone ── */
-.mic-btn {
-  width: 100%;
-  padding: 1rem;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.8rem; font-weight: 600;
-  letter-spacing: 0.1em;
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
-  transition: all 0.2s;
-  margin-bottom: 0.8rem;
-}
-.mic-btn:hover { border-color: var(--accent); color: var(--accent); }
-.mic-btn.recording {
-  border-color: var(--danger);
-  color: var(--danger);
-  background: rgba(248,81,73,0.07);
-  animation: pulse-border 1s ease-in-out infinite alternate;
-}
-@keyframes pulse-border {
-  from { box-shadow: none; }
-  to   { box-shadow: 0 0 12px rgba(248,81,73,0.3); }
-}
-.mic-hint { font-size: 0.62rem; color: var(--muted); text-align: center; line-height: 1.6; }
+.drop-icon svg { width: 24px; height: 24px; fill: var(--text-3); }
 
-/* ── Waveform canvas ── */
-#decodeCanvas {
-  display: block; width: 100%; height: 72px;
-  background: #0d1117;
-  border-radius: 5px;
+.drop-title {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.drop-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+}
+
+.drop-zone.has-file .drop-icon svg { fill: var(--accent2); }
+.drop-zone.has-file { border-color: var(--accent2); background: var(--accent-lt); }
+
+/* ── Waveform ── */
+.waveform-wrap {
+  background: var(--bg);
   border: 1px solid var(--border);
-  margin: 0.8rem 0;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 20px;
 }
+
+.waveform-label {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--text-3); letter-spacing: 0.15em;
+  text-transform: uppercase; margin-bottom: 6px;
+  display: flex; justify-content: space-between;
+}
+
+#wave-canvas { width:100%; height:52px; display:block; }
 
 /* ── Decode button ── */
 .btn-decode {
   width: 100%;
-  padding: 0.8rem;
-  font-family: 'Syne', sans-serif;
-  font-size: 0.85rem; font-weight: 800;
-  letter-spacing: 0.15em;
+  padding: 13px;
   background: var(--accent);
   color: #fff;
-  border: none; border-radius: 6px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: all 0.15s;
-  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-decode:hover { background: #79bcff; }
-.btn-decode:disabled { opacity: 0.35; cursor: default; }
+
+.btn-decode:hover { background: var(--accent2); }
+.btn-decode:active { transform: scale(0.98); }
+.btn-decode:disabled { background: var(--border2); cursor: not-allowed; }
+.btn-decode svg { width:16px; height:16px; fill:#fff; }
 
 /* ── Progress ── */
-.progress-wrap { margin-top: 0.8rem; display: none; }
-.progress-label { font-size: 0.62rem; color: var(--muted); margin-bottom: 0.3rem; display: flex; justify-content: space-between; }
-.progress-track { height: 3px; background: var(--panel); border-radius: 2px; overflow: hidden; }
-.progress-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0%; transition: width 0.1s; }
+.progress-wrap {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  display: none;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent2), #52b788);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
 
 /* ── Result ── */
-.result-section { margin-top: 1.2rem; display: none; }
-.result-label { font-size: 0.6rem; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.6rem; }
-.digit-row {
-  display: flex; gap: 0.5rem; justify-content: center;
-  margin-bottom: 0.8rem;
-}
-.digit-cell {
-  width: 52px; height: 60px;
-  background: var(--panel);
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Syne', sans-serif;
-  font-size: 1.6rem; font-weight: 800;
-  color: var(--muted);
-  transition: all 0.25s;
-}
-.digit-cell.filled { border-color: var(--accent2); color: var(--accent2); background: rgba(63,185,80,0.07); }
-.digit-cell.appear { animation: pop-in 0.25s cubic-bezier(0.175,0.885,0.32,1.275); }
-@keyframes pop-in { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
+.result-section { display: none; }
 
-/* Copy row */
-.copy-row {
-  display: flex; gap: 0.6rem; align-items: center;
+.result-label {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--text-3); letter-spacing: 0.15em;
+  text-transform: uppercase; margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
 }
-.code-readonly {
+
+.confidence-badge {
+  font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 10px;
+  background: var(--accent-lt); color: var(--accent2);
+  border: 1px solid rgba(45,106,79,0.2);
+}
+
+/* ── Digit result display ── */
+.digit-row {
+  display: flex; gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.digit-box {
+  width: 52px; height: 64px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(12px) scale(0.9); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+
+.digit-box .d-num {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.digit-box .d-idx {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--text-3);
+  letter-spacing: 0.1em;
+}
+
+/* ── Copy area ── */
+.copy-area {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+
+.code-display {
   flex: 1;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--accent2);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: 0.3em;
-  padding: 0.6rem 0.8rem;
-  text-align: center;
-  outline: none;
-  cursor: text;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  font-family: var(--mono);
+  font-size: 22px;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  font-weight: 500;
   user-select: all;
 }
+
 .btn-copy {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--muted);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.72rem;
-  padding: 0.6rem 1rem;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 16px;
   cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
   transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
   white-space: nowrap;
 }
+
 .btn-copy:hover { border-color: var(--accent2); color: var(--accent2); }
-.btn-copy.copied { border-color: var(--accent2); color: var(--accent2); }
+.btn-copy svg { width:14px; height:14px; fill:currentColor; }
+.btn-copy.copied { background: var(--success-lt); border-color: #a8d5b5; color: var(--success); }
 
-.go-back-hint {
-  font-size: 0.65rem; color: var(--muted); text-align: center; margin-top: 0.8rem; line-height: 1.7;
-}
-.go-back-hint a { color: var(--accent); text-decoration: none; }
-.go-back-hint a:hover { text-decoration: underline; }
-
-/* log */
-.decode-log {
-  margin-top: 0.8rem;
-  background: #0d1117;
+/* ── Debug table ── */
+.debug-wrap {
+  margin-top: 16px;
   border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 0.7rem 0.9rem;
-  font-size: 0.62rem;
-  color: var(--muted);
-  max-height: 100px;
-  overflow-y: auto;
-  line-height: 1.9;
+  border-radius: var(--radius);
+  overflow: hidden;
 }
-.decode-log .ok  { color: var(--accent2); }
-.decode-log .hi  { color: var(--accent); }
-.decode-log .err { color: var(--danger); }
+
+.debug-header {
+  padding: 8px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex; justify-content: space-between;
+}
+
+.debug-body {
+  display: none;
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.8;
+  overflow-x: auto;
+}
+
+.debug-body.open { display: block; }
+
+.freq-row { display: flex; gap: 8px; align-items: center; margin-bottom: 3px; }
+.freq-bar-wrap { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.freq-bar { height:100%; background:var(--accent2); border-radius:3px; transition:width 0.3s; }
+
+/* ── Error ── */
+.error-box {
+  background: #fef0ef; border: 1px solid #f5b7b1;
+  border-radius: var(--radius); padding: 12px 16px;
+  color: var(--err); font-size: 13px; display: none;
+  align-items: center; gap: 8px; margin-bottom: 16px;
+}
+.error-box svg { width:16px; height:16px; fill:currentColor; flex-shrink:0; }
+
+.card-footer {
+  padding: 14px 32px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+  display: flex; justify-content: space-between; align-items: center;
+}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <div class="page-header">
-    <a class="back-link" href="captcha.html">← Back to CAPTCHA page</a>
-    <h1>Tone <span>Decoder</span></h1>
-    <p class="page-sub">
-      Upload the downloaded WAV file, or use your microphone to capture the tone live.<br>
-      The hidden code will be extracted and shown below.
-    </p>
+<div class="brand">
+  <div class="brand-mark">
+    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
   </div>
+  <span class="brand-name">ToneGuard</span>
+  <div class="brand-sep"></div>
+  <span class="brand-sub">Decoder</span>
+  <a href="captcha.html" class="back-link">← Back to CAPTCHA</a>
+</div>
 
-  <!-- Input card -->
+<div class="page">
   <div class="card">
+
     <div class="card-header">
-      <div class="dot active" id="inputDot"></div>
-      INPUT METHOD
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg>
+      </div>
+      <div class="card-header-text">
+        <h1>DTMF Decoder</h1>
+        <p>Upload the WAV file to extract your verification code.</p>
+      </div>
     </div>
+
     <div class="card-body">
 
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('upload')">⬆ Upload WAV File</button>
-        <button class="tab-btn"       onclick="switchTab('mic')">🎤 Live Microphone</button>
+      <!-- Drop zone -->
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept=".wav,audio/wav">
+        <div class="drop-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6zm-2 16a2 2 0 110-4 2 2 0 010 4z"/></svg>
+        </div>
+        <div class="drop-title" id="drop-title">Drop WAV file here</div>
+        <div class="drop-sub">or click to browse · .wav files only</div>
       </div>
 
-      <!-- Upload tab -->
-      <div class="tab-panel active" id="tab-upload">
-        <div class="drop-zone" id="dropZone">
-          <input type="file" accept=".wav,audio/*" id="fileInput" onchange="handleFile(this.files[0])">
-          <div class="drop-icon">🎵</div>
-          <div class="drop-text">
-            <strong>Click to upload</strong> or drag & drop<br>
-            WAV file from the CAPTCHA page
-          </div>
+      <!-- Waveform preview -->
+      <div class="waveform-wrap" id="wave-wrap" style="display:none">
+        <div class="waveform-label">
+          <span>Waveform Preview</span>
+          <span id="wave-info">—</span>
         </div>
-        <div class="file-info" id="fileInfo">
-          <span>📄</span>
-          <span class="fname" id="fileName">—</span>
-          <span id="fileDur" style="margin-left:auto;flex-shrink:0">—</span>
-        </div>
+        <canvas id="wave-canvas"></canvas>
       </div>
 
-      <!-- Mic tab -->
-      <div class="tab-panel" id="tab-mic">
-        <button class="mic-btn" id="micBtn" onclick="toggleMic()">
-          <span id="micIcon">🎤</span>
-          <span id="micLabel">Start Listening</span>
-        </button>
-        <canvas id="decodeCanvas"></canvas>
-        <div class="mic-hint">
-          Play the tone from the CAPTCHA page near your microphone.<br>
-          Recording stops automatically when tone ends.
-        </div>
+      <!-- Error -->
+      <div class="error-box" id="error-box">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span id="error-text">Error</span>
       </div>
 
       <!-- Decode button -->
-      <div style="margin-top:1rem">
-        <button class="btn-decode" id="decodeBtn" onclick="runDecode()" disabled>
-          ⚙ Decode Tone
-        </button>
-        <div class="progress-wrap" id="progressWrap">
-          <div class="progress-label"><span id="progressText">Analysing…</span><span id="progressPct">0%</span></div>
-          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <button class="btn-decode" id="btn-decode" disabled>
+        <svg viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+        Decode DTMF Tones
+      </button>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progress-wrap">
+        <div id="progress-bar"></div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-section" id="result-section">
+
+        <div class="result-label">
+          <span>Decoded Digits</span>
+          <span class="confidence-badge" id="confidence-badge">—</span>
         </div>
+
+        <div class="digit-row" id="digit-row"></div>
+
+        <div class="copy-area">
+          <div class="code-display" id="code-display">——————</div>
+          <button class="btn-copy" id="btn-copy">
+            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            Copy Code
+          </button>
+        </div>
+
+        <div class="debug-wrap">
+          <div class="debug-header" id="debug-toggle">
+            <span>Signal Analysis</span>
+            <span>▼</span>
+          </div>
+          <div class="debug-body" id="debug-body"></div>
+        </div>
+
       </div>
 
     </div>
+
+    <div class="card-footer">
+      <span>ToneGuard · Goertzel DTMF Decoder</span>
+      <span>No data sent to any server</span>
+    </div>
+
   </div>
-
-  <!-- Result card -->
-  <div class="card" id="resultCard" style="display:none">
-    <div class="card-header">
-      <div class="dot active" style="background:var(--accent2);box-shadow:0 0 6px var(--accent2)"></div>
-      DECODED RESULT
-    </div>
-    <div class="card-body">
-      <div class="result-label">Detected digits (in order)</div>
-      <div class="digit-row" id="digitRow">
-        <div class="digit-cell" id="rc0">?</div>
-        <div class="digit-cell" id="rc1">?</div>
-        <div class="digit-cell" id="rc2">?</div>
-        <div class="digit-cell" id="rc3">?</div>
-        <div class="digit-cell" id="rc4">?</div>
-        <div class="digit-cell" id="rc5">?</div>
-      </div>
-      <div class="copy-row">
-        <input class="code-readonly" id="codeReadonly" readonly value="——————">
-        <button class="btn-copy" id="copyBtn" onclick="copyCode()">⎘ Copy</button>
-      </div>
-      <div class="go-back-hint">
-        Copy this code → go back to <a href="captcha.html">CAPTCHA page</a> → paste & click VERIFY
-      </div>
-    </div>
-  </div>
-
-  <!-- Log -->
-  <div class="card">
-    <div class="card-header"><div class="dot"></div>DECODE LOG</div>
-    <div class="card-body" style="padding:0">
-      <div class="decode-log" id="decodeLog">
-        <span class="hi">[READY]</span> Tone decoder initialised. Upload a WAV or use mic.<br>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /wrap -->
+</div>
 
 <script>
-// ─── DTMF table ───────────────────────────────────────────────────────────────
+// ── DTMF frequency table ──────────────────────────────────────
 const ROW_FREQS = [697, 770, 852, 941];
-const COL_FREQS = [1209, 1336, 1477];
-const ALL_FREQS = [...ROW_FREQS, ...COL_FREQS];
-const DTMF_MAP  = {
-  '697,1209':'1','697,1336':'2','697,1477':'3',
-  '770,1209':'4','770,1336':'5','770,1477':'6',
-  '852,1209':'7','852,1336':'8','852,1477':'9',
-  '941,1209':'*','941,1336':'0','941,1477':'#',
-};
+const COL_FREQS = [1209, 1336, 1477, 1633];
+const DTMF_MAP  = [
+  ['1','2','3','A'],
+  ['4','5','6','B'],
+  ['7','8','9','C'],
+  ['*','0','#','D']
+];
 
-// ─── State ────────────────────────────────────────────────────────────────────
-let audioCtx    = null;
-let decodeBuf   = null;   // AudioBuffer to decode
-let micStream   = null;
-let micRecorder = null;
-let micChunks   = [];
-let micActive   = false;
-let scopeAnimId = null;
+// ── Goertzel algorithm ────────────────────────────────────────
+// Computes the energy at one specific frequency in a sample block.
+// Far more efficient than FFT when you only need a few frequencies.
+function goertzel(samples, targetFreq, sampleRate) {
+  const N       = samples.length;
+  const k       = Math.round(N * targetFreq / sampleRate);
+  const omega   = 2 * Math.PI * k / N;
+  const coeff   = 2 * Math.cos(omega);
+  let q1 = 0, q2 = 0;
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    b.classList.toggle('active', (i===0 && tab==='upload')||(i===1 && tab==='mic'));
-  });
-  document.getElementById('tab-upload').classList.toggle('active', tab==='upload');
-  document.getElementById('tab-mic').classList.toggle('active', tab==='mic');
+  for (let i = 0; i < N; i++) {
+    const q0 = samples[i] + coeff * q1 - q2;
+    q2 = q1; q1 = q0;
+  }
+
+  // Return power (magnitude squared)
+  return q1*q1 + q2*q2 - q1*q2*coeff;
 }
 
-// ─── File upload ──────────────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
+// ── Detect one digit in a sample window ───────────────────────
+function detectDigit(samples, sampleRate) {
+  const rowEnergies = ROW_FREQS.map(f => goertzel(samples, f, sampleRate));
+  const colEnergies = COL_FREQS.map(f => goertzel(samples, f, sampleRate));
 
-async function handleFile(file) {
-  if (!file) return;
-  log(`File selected: <span class="hi">${file.name}</span> (${(file.size/1024).toFixed(1)} KB)`);
-  document.getElementById('fileName').textContent = file.name;
+  const maxRow = Math.max(...rowEnergies);
+  const maxCol = Math.max(...colEnergies);
+  const total  = rowEnergies.reduce((s,v)=>s+v,0) + colEnergies.reduce((s,v)=>s+v,0);
 
-  ensureAudio();
-  const arrayBuf = await file.arrayBuffer();
-  audioCtx.decodeAudioData(arrayBuf, buf => {
-    decodeBuf = buf;
-    const dur = buf.duration.toFixed(2);
-    document.getElementById('fileDur').textContent = dur + 's';
-    document.getElementById('fileInfo').style.display = 'flex';
-    document.getElementById('decodeBtn').disabled = false;
-    log(`Audio decoded: ${dur}s, ${buf.sampleRate}Hz, ${buf.numberOfChannels}ch`);
-    drawWaveformPreview(buf);
-  }, err => {
-    log(`<span class="err">Error decoding file: ${err}</span>`);
-  });
+  // Silence threshold — if total energy too low, return null
+  if (total < 1e6) return { digit: null, rowE: rowEnergies, colE: colEnergies };
+
+  // Dominant frequencies must be significantly stronger than others
+  const rowIdx = rowEnergies.indexOf(maxRow);
+  const colIdx = colEnergies.indexOf(maxCol);
+
+  // Check dominance ratio: strongest must be > 2x second strongest
+  const rowSorted = [...rowEnergies].sort((a,b)=>b-a);
+  const colSorted = [...colEnergies].sort((a,b)=>b-a);
+
+  if (rowSorted[0] < rowSorted[1] * 1.5) return { digit: null, rowE: rowEnergies, colE: colEnergies };
+  if (colSorted[0] < colSorted[1] * 1.5) return { digit: null, rowE: rowEnergies, colE: colEnergies };
+
+  return {
+    digit:  DTMF_MAP[rowIdx][colIdx],
+    rowIdx, colIdx,
+    rowE: rowEnergies, colE: colEnergies,
+    confidence: Math.min(rowSorted[0]/rowSorted[1], colSorted[0]/colSorted[1])
+  };
 }
 
-function drawWaveformPreview(buf) {
-  const canvas = document.getElementById('decodeCanvas');
-  canvas.style.display = 'block';
+// ── Parse WAV file ────────────────────────────────────────────
+function parseWav(arrayBuffer) {
+  const view       = new DataView(arrayBuffer);
+  const riff       = String.fromCharCode(...[0,1,2,3].map(i=>view.getUint8(i)));
+  if (riff !== 'RIFF') throw new Error('Not a valid WAV file');
+
+  const audioFmt   = view.getUint16(20, true);
+  if (audioFmt !== 1) throw new Error('Only PCM WAV supported (no compression)');
+
+  const channels   = view.getUint16(22, true);
+  const sampleRate = view.getUint32(24, true);
+  const bitsPerSmp = view.getUint16(34, true);
+
+  // Find data chunk
+  let dataOffset = 12;
+  while (dataOffset < view.byteLength - 8) {
+    const id  = String.fromCharCode(...[0,1,2,3].map(i=>view.getUint8(dataOffset+i)));
+    const sz  = view.getUint32(dataOffset+4, true);
+    if (id === 'data') { dataOffset += 8; break; }
+    dataOffset += 8 + sz;
+  }
+
+  // Read samples (take left channel only)
+  const samples = [];
+  const stride  = channels * (bitsPerSmp / 8);
+  for (let i = dataOffset; i + stride <= view.byteLength; i += stride) {
+    let val;
+    if (bitsPerSmp === 16) val = view.getInt16(i, true) / 32768;
+    else if (bitsPerSmp === 8) val = (view.getUint8(i) - 128) / 128;
+    else if (bitsPerSmp === 32) val = view.getInt32(i, true) / 2147483648;
+    else val = 0;
+    samples.push(val);
+  }
+
+  return { samples, sampleRate, channels, bitsPerSmp };
+}
+
+// ── Main decode ───────────────────────────────────────────────
+function decodeDTMF(samples, sampleRate, onProgress) {
+  // Window size: 40ms — good balance for Goertzel accuracy
+  const windowMs   = 40;
+  const windowSamp = Math.floor(sampleRate * windowMs / 1000);
+  const stepSamp   = Math.floor(windowSamp / 2);   // 50% overlap
+
+  const rawDigits  = [];
+  const total      = Math.floor((samples.length - windowSamp) / stepSamp);
+
+  for (let i = 0; i + windowSamp <= samples.length; i += stepSamp) {
+    const window = samples.slice(i, i + windowSamp);
+    const result = detectDigit(window, sampleRate);
+    rawDigits.push(result);
+    if (i % (stepSamp * 20) === 0) onProgress(i / samples.length * 100);
+  }
+
+  // Collapse consecutive same-digit runs → single digit
+  // Filter out nulls first, then collapse runs
+  const digits    = [];
+  const debugInfo = [];
+  let   lastDigit = null;
+  let   runCount  = 0;
+  let   runConf   = [];
+
+  rawDigits.forEach(r => {
+    if (r.digit === null) {
+      if (lastDigit !== null && runCount >= 2) {
+        // End of a run — commit it
+        const avgConf = runConf.reduce((s,v)=>s+v,0)/runConf.length;
+        digits.push(lastDigit);
+        debugInfo.push({ digit: lastDigit, frames: runCount, confidence: avgConf });
+      }
+      lastDigit = null;
+      runCount  = 0;
+      runConf   = [];
+    } else if (r.digit === lastDigit) {
+      runCount++;
+      if (r.confidence) runConf.push(r.confidence);
+    } else {
+      if (lastDigit !== null && runCount >= 2) {
+        const avgConf = runConf.reduce((s,v)=>s+v,0)/runConf.length;
+        digits.push(lastDigit);
+        debugInfo.push({ digit: lastDigit, frames: runCount, confidence: avgConf });
+      }
+      lastDigit = r.digit;
+      runCount  = 1;
+      runConf   = r.confidence ? [r.confidence] : [];
+    }
+  });
+
+  // Flush last run
+  if (lastDigit !== null && runCount >= 2) {
+    const avgConf = runConf.reduce((s,v)=>s+v,0)/runConf.length;
+    digits.push(lastDigit);
+    debugInfo.push({ digit: lastDigit, frames: runCount, confidence: avgConf });
+  }
+
+  return { digits, debugInfo };
+}
+
+// ── Draw waveform preview ─────────────────────────────────────
+function drawWaveform(samples, sampleRate) {
+  const canvas = document.getElementById('wave-canvas');
+  const ctx    = canvas.getContext('2d');
   canvas.width  = canvas.offsetWidth * devicePixelRatio;
   canvas.height = canvas.offsetHeight * devicePixelRatio;
-  const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  ctx.fillStyle = '#0d1117'; ctx.fillRect(0,0,W,H);
 
-  const data = buf.getChannelData(0);
-  const step = Math.ceil(data.length / W);
-  ctx.beginPath(); ctx.strokeStyle = '#58a6ff'; ctx.lineWidth = 1;
-  for (let x=0; x<W; x++) {
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = '#2d6a4f';
+  ctx.lineWidth   = 1.5;
+  ctx.shadowColor = '#2d6a4f';
+  ctx.shadowBlur  = 3;
+
+  const step = Math.ceil(samples.length / W);
+  ctx.beginPath();
+  for (let i = 0; i < W; i++) {
     let max = 0;
-    for (let j=0; j<step; j++) { const v=Math.abs(data[x*step+j]||0); if(v>max) max=v; }
-    const h = max * H * 0.9;
-    ctx.moveTo(x, H/2 - h/2);
-    ctx.lineTo(x, H/2 + h/2);
+    for (let j = i*step; j < (i+1)*step && j < samples.length; j++) {
+      if (Math.abs(samples[j]) > max) max = Math.abs(samples[j]);
+    }
+    const y = (1 - max) * H / 2;
+    i === 0 ? ctx.moveTo(0, H/2) : ctx.lineTo(i, H/2 - max * H/2);
   }
   ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  document.getElementById('wave-info').textContent =
+    `${(samples.length/sampleRate).toFixed(2)}s · ${sampleRate}Hz · ${(samples.length/1000).toFixed(0)}k samples`;
 }
 
-// ─── Mic input ────────────────────────────────────────────────────────────────
-async function toggleMic() {
-  if (micActive) {
-    stopMic();
-  } else {
-    await startMic();
-  }
+// ── UI helpers ────────────────────────────────────────────────
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  document.getElementById('error-text').textContent = msg;
+  box.style.display = 'flex';
+  setTimeout(() => box.style.display = 'none', 5000);
 }
 
-async function startMic() {
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({audio:{sampleRate:44100, channelCount:1}, video:false});
-    micChunks = [];
-    micRecorder = new MediaRecorder(micStream);
-    micRecorder.ondataavailable = e => micChunks.push(e.data);
-    micRecorder.onstop = async () => {
-      const blob = new Blob(micChunks, {type:'audio/webm'});
-      ensureAudio();
-      const arrayBuf = await blob.arrayBuffer();
-      audioCtx.decodeAudioData(arrayBuf, buf => {
-        decodeBuf = buf;
-        log(`Mic recording: ${buf.duration.toFixed(2)}s captured`);
-        document.getElementById('decodeBtn').disabled = false;
-        drawWaveformPreview(buf);
-      });
-    };
-    micRecorder.start();
-    micActive = true;
-    document.getElementById('micBtn').classList.add('recording');
-    document.getElementById('micLabel').textContent = 'Recording… Click to Stop';
-    document.getElementById('micIcon').textContent = '⏹';
-    log('Microphone recording started');
-    startMicScope();
-  } catch(e) {
-    log(`<span class="err">Mic access denied: ${e.message}</span>`);
-  }
-}
+function showResult(digits, debugInfo) {
+  const section = document.getElementById('result-section');
+  section.style.display = 'block';
 
-function stopMic() {
-  if (micRecorder && micRecorder.state !== 'inactive') micRecorder.stop();
-  if (micStream) micStream.getTracks().forEach(t=>t.stop());
-  micActive = false;
-  document.getElementById('micBtn').classList.remove('recording');
-  document.getElementById('micLabel').textContent = 'Start Listening';
-  document.getElementById('micIcon').textContent = '🎤';
-  if (scopeAnimId) { cancelAnimationFrame(scopeAnimId); scopeAnimId=null; }
-}
+  const code    = digits.join('');
+  const row     = document.getElementById('digit-row');
+  row.innerHTML = '';
 
-function startMicScope() {
-  ensureAudio();
-  const src  = audioCtx.createMediaStreamSource(micStream);
-  const anal = audioCtx.createAnalyser();
-  anal.fftSize = 1024;
-  src.connect(anal);
-  const canvas = document.getElementById('decodeCanvas');
-  canvas.width  = canvas.offsetWidth * devicePixelRatio;
-  canvas.height = canvas.offsetHeight * devicePixelRatio;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const buf = new Float32Array(anal.fftSize);
-  function draw() {
-    anal.getFloatTimeDomainData(buf);
-    ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
-    ctx.beginPath(); ctx.strokeStyle='#f85149'; ctx.lineWidth=1.5*devicePixelRatio;
-    const sw = W/buf.length;
-    buf.forEach((v,i)=>{ const y=H/2+v*H/2.2; i?ctx.lineTo(i*sw,y):ctx.moveTo(i*sw,y); });
-    ctx.stroke();
-    scopeAnimId = requestAnimationFrame(draw);
-  }
-  draw();
-}
-
-// ─── Goertzel ─────────────────────────────────────────────────────────────────
-function goertzel(samples, freq, fs) {
-  const n = samples.length;
-  const k = Math.round(n * freq / fs);
-  const w = 2 * Math.PI * k / n;
-  const cos = Math.cos(w), sin = Math.sin(w), c = 2*cos;
-  let q1=0, q2=0;
-  for (let i=0; i<n; i++) { const q0=c*q1-q2+samples[i]; q2=q1; q1=q0; }
-  return (q1-q2*cos)**2 + (q2*sin)**2;
-}
-
-// ─── Decode audio buffer ──────────────────────────────────────────────────────
-async function runDecode() {
-  if (!decodeBuf) return;
-  document.getElementById('decodeBtn').disabled = true;
-  document.getElementById('resultCard').style.display = 'none';
-  document.getElementById('progressWrap').style.display = 'block';
-
-  // Reset digit cells
-  for (let i=0; i<6; i++) {
-    const c = document.getElementById('rc'+i);
-    c.textContent = '?'; c.className = 'digit-cell';
-  }
-
-  const fs       = decodeBuf.sampleRate;
-  const samples  = decodeBuf.getChannelData(0);
-  const total    = samples.length;
-
-  // Window size: ~80ms for Goertzel (good frequency resolution)
-  const WIN      = Math.floor(fs * 0.08);
-  const HOP      = Math.floor(WIN / 4);           // 75% overlap
-  const MIN_POW  = 100;                            // minimum power threshold
-  const MIN_CONF = 0.55;                           // F0/F1 separation confidence
-
-  const frames   = [];
-
-  // Analyse frames
-  let processed = 0;
-  const totalFrames = Math.floor((total - WIN) / HOP);
-  for (let start=0; start+WIN<=total; start+=HOP) {
-    const win = samples.slice(start, start+WIN);
-
-    // RMS gate
-    let rms = 0;
-    for (let i=0; i<win.length; i++) rms += win[i]*win[i];
-    rms = Math.sqrt(rms/win.length);
-
-    let digit = null;
-    if (rms > 0.005) {
-      const pow = {};
-      for (const f of ALL_FREQS) pow[f] = goertzel(win, f, fs);
-
-      const bestRow = ROW_FREQS.reduce((a,b)=>pow[a]>pow[b]?a:b);
-      const bestCol = COL_FREQS.reduce((a,b)=>pow[a]>pow[b]?a:b);
-      const pR = pow[bestRow], pC = pow[bestCol];
-
-      const rowConf = pR / (ROW_FREQS.reduce((s,f)=>s+pow[f],0) + 1e-9);
-      const colConf = pC / (COL_FREQS.reduce((s,f)=>s+pow[f],0) + 1e-9);
-
-      if (pR > MIN_POW && pC > MIN_POW && rowConf > MIN_CONF && colConf > MIN_CONF) {
-        digit = DTMF_MAP[`${bestRow},${bestCol}`] || null;
-      }
-    }
-    frames.push(digit);
-    processed++;
-
-    // Update progress every 50 frames
-    if (processed % 50 === 0) {
-      const pct = Math.round(processed/totalFrames*100);
-      document.getElementById('progressFill').style.width = pct+'%';
-      document.getElementById('progressPct').textContent  = pct+'%';
-      document.getElementById('progressText').textContent = `Scanning frame ${processed}/${totalFrames}…`;
-      await new Promise(r=>setTimeout(r,0));  // yield to browser
-    }
-  }
-
-  document.getElementById('progressFill').style.width = '100%';
-  document.getElementById('progressPct').textContent  = '100%';
-
-  // ── Collapse runs: [null,null,'5','5','5','5',null,'3','3','3',...] → ['5','3',…]
-  const events = [];
-  let cur = null, runLen = 0;
-  for (const d of frames) {
-    if (d === cur) {
-      runLen++;
-    } else {
-      if (cur !== null && runLen >= 3) events.push(cur);   // need 3+ consecutive frames
-      cur = d; runLen = 1;
-    }
-  }
-  if (cur !== null && runLen >= 3) events.push(cur);
-
-  // Remove nulls (gaps)
-  const digits = events.filter(d=>d!==null).filter(d=>/[0-9]/.test(d));
-
-  log(`Frames analysed: ${frames.length}  |  Events: ${events.length}  |  Digits: ${digits.join('')}`);
-
-  setTimeout(()=>showResult(digits), 200);
-}
-
-// ─── Show result ──────────────────────────────────────────────────────────────
-function showResult(digits) {
-  document.getElementById('progressWrap').style.display = 'none';
-  document.getElementById('resultCard').style.display = 'block';
-  document.getElementById('decodeBtn').disabled = false;
-
-  const padded = digits.slice(0,6);
-  while (padded.length < 6) padded.push('');
-
-  for (let i=0; i<6; i++) {
-    const c = document.getElementById('rc'+i);
-    if (padded[i] !== '') {
-      c.textContent = padded[i];
-      c.className   = 'digit-cell filled appear';
-    } else {
-      c.textContent = '?';
-      c.className   = 'digit-cell';
-    }
-  }
-
-  const code = digits.slice(0,6).join('');
-  document.getElementById('codeReadonly').value = code;
-  log(`<span class="ok">✔ Decoded: ${code} (${digits.length} digit${digits.length===1?'':'s'} found)</span>`);
-
-  if (digits.length < 4) {
-    log('<span class="err">⚠ Low confidence — try again closer to mic or re-download WAV</span>');
-  }
-}
-
-function copyCode() {
-  const val = document.getElementById('codeReadonly').value;
-  navigator.clipboard.writeText(val).then(()=>{
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
-    setTimeout(()=>{ btn.textContent='⎘ Copy'; btn.classList.remove('copied'); }, 1800);
+  digits.forEach((d, i) => {
+    const box = document.createElement('div');
+    box.className = 'digit-box';
+    box.style.animationDelay = (i * 80) + 'ms';
+    box.innerHTML = `<div class="d-num">${d}</div><div class="d-idx">#${i+1}</div>`;
+    row.appendChild(box);
   });
+
+  document.getElementById('code-display').textContent = code || '——————';
+
+  const avgConf = debugInfo.length
+    ? debugInfo.reduce((s,d)=>s+d.confidence,0)/debugInfo.length
+    : 0;
+  document.getElementById('confidence-badge').textContent =
+    `${digits.length} digits · ${(Math.min(avgConf, 99.9)).toFixed(1)}× confidence`;
+
+  // Debug table
+  const dbg = document.getElementById('debug-body');
+  dbg.innerHTML = debugInfo.map(d =>
+    `<div class="freq-row">
+      <span style="width:12px;color:var(--accent);font-weight:600">${d.digit}</span>
+      <span style="width:60px;color:var(--text-3)">${d.frames} frames</span>
+      <div class="freq-bar-wrap">
+        <div class="freq-bar" style="width:${Math.min(d.confidence/10*100,100)}%"></div>
+      </div>
+      <span style="width:40px;text-align:right">${d.confidence.toFixed(1)}×</span>
+    </div>`
+  ).join('');
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function ensureAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+// ── State ─────────────────────────────────────────────────────
+let loadedSamples    = null;
+let loadedSampleRate = null;
+
+// ── File handling ─────────────────────────────────────────────
+function handleFile(file) {
+  if (!file || !file.name.endsWith('.wav')) {
+    showError('Please upload a .wav file.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const { samples, sampleRate } = parseWav(e.target.result);
+      loadedSamples    = samples;
+      loadedSampleRate = sampleRate;
+
+      // Show waveform
+      document.getElementById('wave-wrap').style.display = 'block';
+      drawWaveform(samples, sampleRate);
+
+      // Update drop zone
+      const dz = document.getElementById('drop-zone');
+      dz.classList.add('has-file');
+      document.getElementById('drop-title').textContent = file.name;
+
+      // Enable decode
+      document.getElementById('btn-decode').disabled = false;
+      document.getElementById('result-section').style.display = 'none';
+
+    } catch(err) {
+      showError(err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
-function log(html) {
-  const el = document.getElementById('decodeLog');
-  const t  = new Date().toTimeString().slice(0,8);
-  el.innerHTML += `<span style="color:var(--muted)">[${t}]</span> ${html}<br>`;
-  el.scrollTop  = el.scrollHeight;
-}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  handleFile(e.target.files[0]);
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+// ── Decode button ─────────────────────────────────────────────
+document.getElementById('btn-decode').addEventListener('click', () => {
+  if (!loadedSamples) return;
+
+  document.getElementById('btn-decode').disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('result-section').style.display = 'none';
+
+  // Run in next frame so UI updates
+  setTimeout(() => {
+    try {
+      const { digits, debugInfo } = decodeDTMF(
+        loadedSamples,
+        loadedSampleRate,
+        pct => { document.getElementById('progress-bar').style.width = pct + '%'; }
+      );
+
+      document.getElementById('progress-bar').style.width = '100%';
+      setTimeout(() => {
+        document.getElementById('progress-wrap').style.display = 'none';
+        document.getElementById('progress-bar').style.width = '0%';
+
+        if (digits.length === 0) {
+          showError('No DTMF tones detected. Make sure the WAV contains ToneGuard audio.');
+        } else {
+          showResult(digits, debugInfo);
+        }
+        document.getElementById('btn-decode').disabled = false;
+      }, 400);
+
+    } catch(err) {
+      showError(err.message);
+      document.getElementById('btn-decode').disabled = false;
+      document.getElementById('progress-wrap').style.display = 'none';
+    }
+  }, 50);
+});
+
+// ── Copy button ───────────────────────────────────────────────
+document.getElementById('btn-copy').addEventListener('click', function() {
+  const code = document.getElementById('code-display').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    this.innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!`;
+    this.classList.add('copied');
+    setTimeout(() => {
+      this.innerHTML = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy Code`;
+      this.classList.remove('copied');
+    }, 2000);
+  });
+});
+
+// ── Debug toggle ──────────────────────────────────────────────
+document.getElementById('debug-toggle').addEventListener('click', () => {
+  document.getElementById('debug-body').classList.toggle('open');
+});
 </script>
 </body>
 </html>
