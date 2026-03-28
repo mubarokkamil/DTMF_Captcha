@@ -3,664 +3,947 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Acoustic CAPTCHA — Are you human?</title>
+<title>ToneGuard — Human Verification</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap');
-
-:root {
-  --bg: #f5f3ee;
-  --surface: #ffffff;
-  --border: #d8d4cc;
-  --border2: #c2bdb4;
-  --accent: #1a1a2e;
-  --accent2: #e84545;
-  --green: #2d9e6b;
-  --text: #1a1a2e;
-  --muted: #888079;
-  --tag-bg: #eae6df;
-}
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
+:root {
+  --bg:        #f5f3ef;
+  --surface:   #ffffff;
+  --border:    #e0dbd2;
+  --border2:   #c8c0b4;
+  --text:      #1a1814;
+  --text-2:    #5a5248;
+  --text-3:    #9a9088;
+  --accent:    #1a3a2a;
+  --accent2:   #2d6a4f;
+  --accent-lt: #e8f4ec;
+  --err:       #c0392b;
+  --warn:      #8b6914;
+  --warn-lt:   #fef9e7;
+  --success:   #1e6b3c;
+  --success-lt:#e8f5ed;
+  --mono:      'IBM Plex Mono', monospace;
+  --display:   'Syne', sans-serif;
+  --body:      'Lora', serif;
+  --radius:    6px;
+  --shadow:    0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,0.1), 0 12px 40px rgba(0,0,0,0.1);
+}
+
+html, body {
+  min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Background grid ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+.page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
-}
-
-/* Dot grid background */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: radial-gradient(circle, #c2bdb4 1px, transparent 1px);
-  background-size: 28px 28px;
-  opacity: 0.5;
-  z-index: 0;
-}
-
-.wrap {
-  position: relative; z-index: 1;
-  width: 100%; max-width: 500px;
-}
-
-/* Site header — fake website context */
-.fake-header {
-  display: flex; align-items: center; gap: 0.7rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-.fake-logo {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.3rem; font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.02em;
-}
-.fake-logo span { color: var(--accent2); }
-.fake-nav {
-  margin-left: auto;
-  font-size: 0.65rem;
-  color: var(--muted);
-  letter-spacing: 0.1em;
-}
-
-/* Captcha box */
-.captcha-box {
-  background: var(--surface);
-  border: 1.5px solid var(--border2);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.03);
-}
-
-/* Header strip */
-.captcha-header {
-  background: var(--tag-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 0.8rem 1.2rem;
-  display: flex; align-items: center; gap: 0.6rem;
-}
-.captcha-header .icon {
-  width: 28px; height: 28px;
-  background: var(--accent);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.9rem;
-  flex-shrink: 0;
-}
-.captcha-header .title {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.85rem; font-weight: 700;
-  color: var(--accent);
-}
-.captcha-header .subtitle {
-  font-size: 0.6rem;
-  color: var(--muted);
-  margin-top: 0.05rem;
-}
-
-/* Body */
-.captcha-body { padding: 1.5rem; }
-
-/* Challenge text */
-.challenge-text {
-  font-size: 0.72rem;
-  color: var(--muted);
-  line-height: 1.7;
-  margin-bottom: 1.3rem;
-  padding: 0.8rem;
-  background: var(--tag-bg);
-  border-radius: 5px;
-  border-left: 3px solid var(--accent2);
-}
-
-/* Audio player area */
-.audio-zone {
-  border: 1.5px dashed var(--border2);
-  border-radius: 6px;
-  padding: 1.2rem;
-  text-align: center;
-  margin-bottom: 1.2rem;
-  background: var(--tag-bg);
+  padding: 40px 20px;
   position: relative;
 }
 
-/* Waveform visualiser (canvas) */
-#waveCanvas {
-  display: block;
-  width: 100%;
-  height: 64px;
-  border-radius: 4px;
-  background: #1a1a2e;
-  margin-bottom: 0.9rem;
+/* ── Brand bar ── */
+.brand {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 10px;
+  z-index: 100;
 }
 
-/* Play/Stop controls */
-.audio-controls {
-  display: flex; gap: 0.6rem; justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 0.7rem;
-}
-.btn {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  border-radius: 4px;
-  padding: 0.55rem 1.1rem;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: all 0.15s;
-  display: flex; align-items: center; gap: 0.4rem;
-}
-.btn-play {
+.brand-mark {
+  width: 28px; height: 28px;
   background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-.btn-play:hover { background: #2d2d4e; }
-.btn-play:disabled { opacity: 0.4; cursor: default; }
-.btn-dl {
-  background: transparent;
-  color: var(--muted);
-  border-color: var(--border2);
-}
-.btn-dl:hover { color: var(--accent); border-color: var(--accent); }
-.btn-refresh {
-  background: transparent;
-  color: var(--muted);
-  border-color: var(--border2);
-}
-.btn-refresh:hover { color: var(--accent2); border-color: var(--accent2); }
-
-.audio-hint {
-  font-size: 0.6rem;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.audio-hint a {
-  color: var(--accent2);
-  text-decoration: none;
-  font-weight: 600;
-}
-.audio-hint a:hover { text-decoration: underline; }
-
-/* Progress indicator (digit sent) */
-.digit-progress {
-  display: flex; gap: 0.4rem; justify-content: center;
-  margin: 0.8rem 0;
-}
-.dp-cell {
-  width: 32px; height: 32px;
-  border: 1.5px solid var(--border);
   border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.9rem; font-weight: 600;
-  color: var(--muted);
-  background: var(--bg);
-  transition: all 0.2s;
-}
-.dp-cell.sending { border-color: #e09000; color: #e09000; background: #fff8e6; }
-.dp-cell.sent    { border-color: var(--green); color: var(--green); background: #edf8f3; }
-
-/* Divider */
-.divider {
-  display: flex; align-items: center; gap: 0.8rem;
-  margin: 1.2rem 0;
-  font-size: 0.6rem; color: var(--muted); letter-spacing: 0.15em;
-}
-.divider::before, .divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
 }
 
-/* Code input */
-.input-label {
-  font-size: 0.63rem;
-  color: var(--muted);
-  letter-spacing: 0.12em;
-  margin-bottom: 0.45rem;
+.brand-mark svg { width: 16px; height: 16px; fill: #fff; }
+
+.brand-name {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+
+.brand-sep { width: 1px; height: 20px; background: var(--border); margin: 0 8px; }
+
+.brand-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.code-input-row {
-  display: flex; gap: 0.5rem;
-}
-.code-input {
-  flex: 1;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: 0.35em;
-  padding: 0.65rem 0.9rem;
-  background: var(--bg);
-  border: 1.5px solid var(--border2);
-  border-radius: 5px;
-  color: var(--accent);
-  outline: none;
-  text-align: center;
-  transition: border-color 0.2s;
-}
-.code-input:focus { border-color: var(--accent); }
-.code-input.success { border-color: var(--green); background: #edf8f3; color: var(--green); }
-.code-input.fail    { border-color: var(--accent2); background: #fff0f0; color: var(--accent2); }
 
-.btn-verify {
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  margin-top: 52px;
+}
+
+.card-header {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.shield-icon {
+  width: 44px; height: 44px;
+  background: var(--accent-lt);
+  border: 1px solid rgba(26,58,42,0.15);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.shield-icon svg { width: 22px; height: 22px; fill: var(--accent2); }
+
+.card-header-text h1 {
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.card-header-text p {
+  font-size: 13px;
+  color: var(--text-2);
+  font-family: var(--body);
+  font-style: italic;
+}
+
+.card-body { padding: 28px 32px; }
+
+/* ── Step indicator ── */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 28px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+}
+
+.step.active { color: var(--accent2); }
+.step.done   { color: var(--success); }
+
+.step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.step.done .step-num {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.step.active .step-num {
+  background: var(--accent2);
+  border-color: var(--accent2);
+  color: #fff;
+}
+
+.step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+
+/* ── Waveform display ── */
+.waveform-wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.waveform-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.waveform-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+.status-dot.playing {
+  background: var(--accent2);
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+#wave-canvas {
+  width: 100%;
+  height: 56px;
+  display: block;
+}
+
+/* ── Digit display ── */
+.otp-display {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.otp-digit {
+  width: 44px; height: 52px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.otp-digit.hidden-digit { color: transparent; user-select: none; }
+.otp-digit.hidden-digit::after {
+  content: '•';
+  position: absolute;
+  color: var(--text-3);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.otp-digit.revealed {
+  border-color: var(--accent2);
+  background: var(--accent-lt);
+  color: var(--accent);
+  animation: revealPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes revealPop {
+  from { transform: scale(0.8); opacity: 0.5; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Info banner ── */
+.info-banner {
+  background: var(--warn-lt);
+  border: 1px solid #e6d284;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--warn);
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.info-banner svg { width: 14px; height: 14px; fill: var(--warn); flex-shrink: 0; margin-top: 1px; }
+
+/* ── Buttons ── */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.btn svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; }
+
+.btn-primary {
   background: var(--accent);
   color: #fff;
-  border: none;
-  font-family: 'Syne', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
+  flex: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.btn-primary:hover { background: var(--accent2); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { background: var(--border2); cursor: not-allowed; box-shadow: none; }
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { border-color: var(--border2); color: var(--text); }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent2);
+  border: 1px solid var(--accent2);
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.btn-outline:hover { background: var(--accent-lt); }
+
+/* ── Divider ── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.divider span {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
   letter-spacing: 0.1em;
-  border-radius: 5px;
-  padding: 0 1.2rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── Input ── */
+.input-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.input-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.otp-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.otp-input:focus { border-color: var(--accent2); }
+.otp-input::placeholder { color: var(--text-3); font-size: 14px; letter-spacing: 0.05em; }
+
+.btn-verify {
+  background: var(--accent2);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 20px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
-.btn-verify:hover { background: #2d2d4e; }
 
-/* Result message */
-.result-msg {
+.btn-verify:hover { background: var(--accent); }
+.btn-verify:active { transform: scale(0.97); }
+
+/* ── Result ── */
+.result {
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13.5px;
   display: none;
-  margin-top: 1rem;
-  padding: 0.8rem 1rem;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-align: center;
-}
-.result-msg.success {
-  background: #edf8f3; color: var(--green); border: 1px solid #a8dfc3;
-}
-.result-msg.fail {
-  background: #fff0f0; color: var(--accent2); border: 1px solid #f5b8b8;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-/* Footer */
-.captcha-footer {
-  padding: 0.7rem 1.2rem;
-  background: var(--tag-bg);
+.result.success {
+  background: var(--success-lt);
+  border: 1px solid #a8d5b5;
+  color: var(--success);
+  display: flex;
+}
+
+.result.error {
+  background: #fef0ef;
+  border: 1px solid #f5b7b1;
+  color: var(--err);
+  display: flex;
+}
+
+.result svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+
+/* ── Card footer ── */
+.card-footer {
+  padding: 14px 32px;
   border-top: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 0.55rem; color: var(--muted); letter-spacing: 0.1em;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
-.captcha-footer .brand { font-weight: 600; color: var(--accent); }
 
-/* Access granted overlay */
-#grantedOverlay {
-  display: none;
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(45,158,107,0.97);
-  flex-direction: column;
-  align-items: center; justify-content: center;
-  color: #fff;
-  text-align: center;
+.footer-text {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
 }
-#grantedOverlay .big-check {
-  font-size: 5rem;
-  margin-bottom: 1rem;
-  animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+
+.decoder-link {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent2);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent2);
+  transition: opacity 0.15s;
 }
-@keyframes pop { from{transform:scale(0)} to{transform:scale(1)} }
-#grantedOverlay h2 {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.8rem; font-weight: 800;
-  margin-bottom: 0.4rem;
+
+.decoder-link:hover { opacity: 0.7; }
+
+/* ── Refresh ── */
+.refresh-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 11px;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
 }
-#grantedOverlay p { font-size: 0.8rem; opacity: 0.8; }
+
+.refresh-btn:hover { color: var(--text); background: var(--border); }
+.refresh-btn svg { width: 12px; height: 12px; fill: currentColor; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.refresh-btn.spinning svg { animation: spin 0.6s linear infinite; }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Fake website header -->
-  <div class="fake-header">
-    <div class="fake-logo">Sec<span>ure</span>Portal</div>
-    <div class="fake-nav">LOGIN · REGISTER · HELP</div>
+<!-- Brand bar -->
+<div class="brand">
+  <div class="brand-mark">
+    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
   </div>
+  <span class="brand-name">ToneGuard</span>
+  <div class="brand-sep"></div>
+  <span class="brand-sub">Acoustic CAPTCHA</span>
+</div>
 
-  <!-- CAPTCHA box -->
-  <div class="captcha-box">
+<div class="page">
+  <div class="card">
 
-    <div class="captcha-header">
-      <div class="icon">🔊</div>
-      <div>
-        <div class="title">Acoustic Verification</div>
-        <div class="subtitle">Confirm you are human using audio challenge</div>
+    <!-- Header -->
+    <div class="card-header">
+      <div class="shield-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      </div>
+      <div class="card-header-text">
+        <h1>Human Verification</h1>
+        <p>Listen to the tone, decode the code, prove you're human.</p>
       </div>
     </div>
 
-    <div class="captcha-body">
+    <!-- Body -->
+    <div class="card-body">
 
-      <div class="challenge-text">
-        A unique code has been encoded into the audio tone below.<br>
-        <strong>Play it</strong>, then visit the <a href="decoder.html" target="_blank" style="color:var(--accent2)">Tone Decoder →</a> to extract the code.
-        Enter the decoded digits in the field below to continue.
-      </div>
-
-      <!-- Audio zone -->
-      <div class="audio-zone">
-        <canvas id="waveCanvas"></canvas>
-
-        <div class="digit-progress" id="digitProgress">
-          <div class="dp-cell" id="dp0">–</div>
-          <div class="dp-cell" id="dp1">–</div>
-          <div class="dp-cell" id="dp2">–</div>
-          <div class="dp-cell" id="dp3">–</div>
-          <div class="dp-cell" id="dp4">–</div>
-          <div class="dp-cell" id="dp5">–</div>
+      <!-- Steps -->
+      <div class="steps">
+        <div class="step active" id="step1">
+          <div class="step-num">1</div>
+          <span>Play Tone</span>
         </div>
-
-        <div class="audio-controls">
-          <button class="btn btn-play" id="playBtn" onclick="playTone()">▶ Play Tone</button>
-          <button class="btn btn-dl"   id="dlBtn"   onclick="downloadWAV()">⬇ Download WAV</button>
-          <button class="btn btn-refresh" onclick="regenerate()">↻ New Code</button>
+        <div class="step-line"></div>
+        <div class="step" id="step2">
+          <div class="step-num">2</div>
+          <span>Decode</span>
         </div>
-
-        <div class="audio-hint">
-          Can't decode with mic? Download the WAV file and upload it on the
-          <a href="decoder.html" target="_blank">decoder page</a>.
+        <div class="step-line"></div>
+        <div class="step" id="step3">
+          <div class="step-num">3</div>
+          <span>Verify</span>
         </div>
       </div>
 
-      <div class="divider">ENTER DECODED CODE</div>
-
-      <div class="input-label">Type the 6-digit code from the decoder</div>
-      <div class="code-input-row">
-        <input type="text" class="code-input" id="codeInput"
-               maxlength="6" placeholder="_ _ _ _ _ _"
-               inputmode="numeric" autocomplete="off"
-               oninput="this.value=this.value.replace(/\D/g,'')"
-               onkeydown="if(event.key==='Enter')verifyCode()">
-        <button class="btn-verify" onclick="verifyCode()">VERIFY</button>
+      <!-- Waveform -->
+      <div class="waveform-wrap">
+        <div class="waveform-label">
+          <span>DTMF Signal</span>
+          <div class="waveform-status">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-txt">Ready</span>
+          </div>
+        </div>
+        <canvas id="wave-canvas"></canvas>
       </div>
 
-      <div class="result-msg" id="resultMsg"></div>
+      <!-- OTP display (hidden by default) -->
+      <div class="otp-display" id="otp-display">
+        <div class="otp-digit hidden-digit" id="d0"></div>
+        <div class="otp-digit hidden-digit" id="d1"></div>
+        <div class="otp-digit hidden-digit" id="d2"></div>
+        <div class="otp-digit hidden-digit" id="d3"></div>
+        <div class="otp-digit hidden-digit" id="d4"></div>
+        <div class="otp-digit hidden-digit" id="d5"></div>
+      </div>
 
-    </div><!-- /body -->
+      <!-- Info banner -->
+      <div class="info-banner">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        <span>Play the tone, then download the WAV file and upload it to the decoder page to extract the code.</span>
+      </div>
 
-    <div class="captcha-footer">
-      <span class="brand">DSP·CAPTCHA</span>
-      <span>DTMF ACOUSTIC CHALLENGE v1.0</span>
-      <span id="codeId">ID: —</span>
+      <!-- Play + Download buttons -->
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-play">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          Play Tone
+        </button>
+        <button class="btn btn-secondary" id="btn-download" disabled>
+          <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Download WAV
+        </button>
+      </div>
+
+      <!-- Link to decoder -->
+      <button class="btn btn-outline" id="btn-decoder">
+        <svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+        Open Decoder Page
+      </button>
+
+      <!-- Divider -->
+      <div class="divider"><span>Enter Code</span></div>
+
+      <!-- Input -->
+      <div class="input-label">6-Digit Verification Code</div>
+      <div class="input-wrap">
+        <input class="otp-input" id="otp-input" type="text"
+          maxlength="6" placeholder="_ _ _ _ _ _" autocomplete="off" spellcheck="false">
+        <button class="btn-verify" id="btn-verify">Verify</button>
+      </div>
+
+      <!-- Result -->
+      <div class="result" id="result-ok">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        <span><strong>Access granted.</strong> Verification successful.</span>
+      </div>
+      <div class="result error" id="result-err">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span><strong>Incorrect code.</strong> Please try again.</span>
+      </div>
+
+    </div><!-- /card-body -->
+
+    <!-- Footer -->
+    <div class="card-footer">
+      <span class="footer-text">Session expires in <span id="timer">5:00</span></span>
+      <button class="refresh-btn" id="btn-refresh">
+        <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        New Code
+      </button>
+      <a href="decoder.html" class="decoder-link" target="_blank">decoder.html →</a>
     </div>
 
-  </div><!-- /captcha-box -->
-
-</div><!-- /wrap -->
-
-<!-- Access granted overlay -->
-<div id="grantedOverlay">
-  <div class="big-check">✅</div>
-  <h2>Access Granted</h2>
-  <p>Human verification successful. Redirecting…</p>
+  </div>
 </div>
 
 <script>
-// ─── DTMF table ──────────────────────────────────────────────────────────────
+// ── DTMF frequency table ──────────────────────────────────────
 const DTMF = {
-  '0':[941,1336],'1':[697,1209],'2':[697,1336],'3':[697,1477],
-  '4':[770,1209],'5':[770,1336],'6':[770,1477],
-  '7':[852,1209],'8':[852,1336],'9':[852,1477],
+  '1':[697,1209], '2':[697,1336], '3':[697,1477],
+  '4':[770,1209], '5':[770,1336], '6':[770,1477],
+  '7':[852,1209], '8':[852,1336], '9':[852,1477],
+  '*':[941,1209], '0':[941,1336], '#':[941,1477]
 };
 
-// ─── State ───────────────────────────────────────────────────────────────────
-let SECRET_CODE = '';
+const TONE_DUR   = 0.35;   // seconds per digit tone
+const GAP_DUR    = 0.08;   // silence between digits
+const SAMPLE_RATE = 44100;
+const VOLUME      = 0.7;
+
+// ── Generate OTP ──────────────────────────────────────────────
+let currentOTP = '';
+let wavBlob    = null;
+
+function generateOTP() {
+  currentOTP = Array.from({length:6}, () => Math.floor(Math.random()*10)).join('');
+  // Reset digit display
+  for (let i = 0; i < 6; i++) {
+    const el = document.getElementById(`d${i}`);
+    el.textContent = currentOTP[i];
+    el.className = 'otp-digit hidden-digit';
+  }
+  wavBlob = null;
+  document.getElementById('btn-download').disabled = true;
+  document.getElementById('result-ok').style.display = 'none';
+  document.getElementById('result-err').style.display = 'none';
+  document.getElementById('otp-input').value = '';
+  resetTimer();
+}
+
+// ── Build WAV in memory ───────────────────────────────────────
+function buildWav(otp) {
+  const digits  = otp.split('');
+  const parts   = [];
+  const toneSamp = Math.floor(SAMPLE_RATE * TONE_DUR);
+  const gapSamp  = Math.floor(SAMPLE_RATE * GAP_DUR);
+  const silence  = new Float32Array(gapSamp);  // zeros
+
+  digits.forEach(d => {
+    const [f1, f2] = DTMF[d];
+    const buf = new Float32Array(toneSamp);
+    for (let i = 0; i < toneSamp; i++) {
+      // Two simultaneous sine waves + raised cosine envelope
+      const env = 0.5 - 0.5 * Math.cos(Math.PI * i / (toneSamp * 0.05));
+      const e   = i < toneSamp * 0.05
+        ? 0.5 - 0.5 * Math.cos(Math.PI * i / (toneSamp * 0.05))
+        : i > toneSamp * 0.95
+          ? 0.5 - 0.5 * Math.cos(Math.PI * (toneSamp - i) / (toneSamp * 0.05))
+          : 1.0;
+      buf[i] = VOLUME * e * 0.5 * (
+        Math.sin(2 * Math.PI * f1 * i / SAMPLE_RATE) +
+        Math.sin(2 * Math.PI * f2 * i / SAMPLE_RATE)
+      );
+    }
+    parts.push(buf, silence);
+  });
+
+  // Concatenate all parts
+  const total  = parts.reduce((s, p) => s + p.length, 0);
+  const pcm    = new Float32Array(total);
+  let pos = 0;
+  parts.forEach(p => { pcm.set(p, pos); pos += p.length; });
+
+  // Convert Float32 → Int16
+  const int16 = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    int16[i] = Math.max(-32768, Math.min(32767, Math.round(pcm[i] * 32767)));
+  }
+
+  // Build WAV file
+  const dataLen  = int16.buffer.byteLength;
+  const wavBuf   = new ArrayBuffer(44 + dataLen);
+  const view     = new DataView(wavBuf);
+  const write    = (o, s) => s.split('').forEach((c,i) => view.setUint8(o+i, c.charCodeAt(0)));
+  const u16 = (o,v) => view.setUint16(o, v, true);
+  const u32 = (o,v) => view.setUint32(o, v, true);
+
+  write(0,  'RIFF'); u32(4, 36 + dataLen);
+  write(8,  'WAVE'); write(12, 'fmt ');
+  u32(16, 16); u16(20, 1); u16(22, 1);
+  u32(24, SAMPLE_RATE); u32(28, SAMPLE_RATE * 2);
+  u16(32, 2); u16(34, 16);
+  write(36, 'data'); u32(40, dataLen);
+  new Int16Array(wavBuf, 44).set(int16);
+
+  return { wavBuf, pcm };
+}
+
+// ── Audio playback via Web Audio API ─────────────────────────
 let audioCtx    = null;
-let analyser    = null;
-let animId      = null;
-let wavData     = null;   // cached WAV bytes for download
-const TONE_MS   = 150;    // ms per digit tone
-const GAP_MS    = 70;     // ms silence between digits
-const SAMPLE_RATE_WAV = 44100;
+let analyserNode = null;
+let isPlaying   = false;
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-function init() {
-  SECRET_CODE = Array.from({length:6}, ()=>Math.floor(Math.random()*10)).join('');
-  wavData = null;
-  document.getElementById('codeId').textContent = 'ID: ' + SECRET_CODE.slice(0,3) + '***';
-  document.getElementById('codeInput').value = '';
-  document.getElementById('codeInput').className = 'code-input';
-  document.getElementById('resultMsg').style.display = 'none';
-  for (let i=0; i<6; i++) {
-    const c = document.getElementById('dp'+i);
-    c.textContent = '–'; c.className = 'dp-cell';
-  }
-  // Pre-render WAV in background
-  setTimeout(() => { wavData = buildWAV(SECRET_CODE); }, 100);
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
 }
 
-function regenerate() {
-  if (animId) { cancelAnimationFrame(animId); animId=null; }
-  drawIdleWave();
-  document.getElementById('playBtn').disabled = false;
-  init();
-}
+async function playOTP(otp) {
+  if (isPlaying) return;
+  isPlaying = true;
 
-// ─── Audio context ────────────────────────────────────────────────────────────
-function ensureAudio() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.connect(audioCtx.destination);
-  drawIdleWave();
-}
+  const ac     = getCtx();
+  const { wavBuf, pcm } = buildWav(otp);
 
-// ─── Play DTMF tones via Web Audio ───────────────────────────────────────────
-async function playTone() {
-  ensureAudio();
-  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  // Store WAV for download
+  wavBlob = new Blob([wavBuf], { type: 'audio/wav' });
+  document.getElementById('btn-download').disabled = false;
 
-  document.getElementById('playBtn').disabled = true;
+  // Play via AudioBuffer
+  const abuf   = ac.createBuffer(1, pcm.length, SAMPLE_RATE);
+  abuf.copyToChannel(pcm, 0);
 
-  const toneSec = TONE_MS / 1000;
-  const gapSec  = GAP_MS  / 1000;
-  let t = audioCtx.currentTime + 0.05;
+  analyserNode = ac.createAnalyser();
+  analyserNode.fftSize = 512;
 
-  const schedule = [];
-  for (const digit of SECRET_CODE) {
-    const [flo, fhi] = DTMF[digit];
-    schedule.push({ t, digit, flo, fhi, dur: toneSec });
+  const src  = ac.createBufferSource();
+  const gain = ac.createGain();
+  gain.gain.value = 1;
 
-    const o1   = audioCtx.createOscillator();
-    const o2   = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    o1.frequency.value = flo; o1.type = 'sine';
-    o2.frequency.value = fhi; o2.type = 'sine';
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.45, t + 0.008);
-    gain.gain.setValueAtTime(0.45, t + toneSec - 0.010);
-    gain.gain.linearRampToValueAtTime(0, t + toneSec);
-    o1.connect(gain); o2.connect(gain);
-    gain.connect(analyser);
-    o1.start(t); o1.stop(t + toneSec);
-    o2.start(t); o2.stop(t + toneSec);
+  src.buffer = abuf;
+  src.connect(gain);
+  gain.connect(analyserNode);
+  analyserNode.connect(ac.destination);
 
-    t += toneSec + gapSec;
-  }
+  setStatus('playing', 'Playing DTMF tone…');
 
-  // Animate digits
-  const startMs = performance.now();
-  for (let i=0; i<6; i++) {
-    const delay = (TONE_MS + GAP_MS) * i;
+  // Reveal digits one by one as they play
+  otp.split('').forEach((d, i) => {
+    const delay = (TONE_DUR + GAP_DUR) * i * 1000 + 100;
     setTimeout(() => {
-      if (i>0) { document.getElementById('dp'+(i-1)).className='dp-cell sent'; }
-      const c = document.getElementById('dp'+i);
-      c.className = 'dp-cell sending';
-      c.textContent = '♪';
-    }, delay + 50);
-  }
-  setTimeout(() => {
-    document.getElementById('dp5').className = 'dp-cell sent';
-    document.getElementById('dp5').textContent = '✓';
-    startScopeAnim();
-  }, (TONE_MS + GAP_MS) * 6 + 50);
+      const el = document.getElementById(`d${i}`);
+      el.className = 'otp-digit hidden-digit';
+      void el.offsetWidth;
+      el.className = 'otp-digit hidden-digit';
+    }, delay - 100);
+  });
 
-  startScopeAnim();
-  const totalMs = (TONE_MS + GAP_MS) * 6;
-  setTimeout(() => {
-    document.getElementById('playBtn').disabled = false;
-  }, totalMs + 300);
+  src.start();
+  src.onended = () => {
+    isPlaying    = false;
+    analyserNode = null;
+    setStatus('idle', 'Tone complete');
+    setStep(2);
+    document.getElementById('btn-play').innerHTML = `
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Play Again`;
+  };
 }
 
-// ─── Oscilloscope animation ───────────────────────────────────────────────────
-function startScopeAnim() {
-  const canvas = document.getElementById('waveCanvas');
-  const ctx    = canvas.getContext('2d');
+function setStatus(state, text) {
+  document.getElementById('status-dot').className = 'status-dot' + (state === 'playing' ? ' playing' : '');
+  document.getElementById('status-txt').textContent = text;
+}
+
+// ── Waveform visualizer ───────────────────────────────────────
+const canvas = document.getElementById('wave-canvas');
+const ctx2d  = canvas.getContext('2d');
+
+function resizeCanvas() {
   canvas.width  = canvas.offsetWidth  * devicePixelRatio;
   canvas.height = canvas.offsetHeight * devicePixelRatio;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function drawWave() {
+  requestAnimationFrame(drawWave);
   const W = canvas.width, H = canvas.height;
-  const buf = new Float32Array(analyser.fftSize);
+  ctx2d.clearRect(0, 0, W, H);
 
-  function draw() {
-    analyser.getFloatTimeDomainData(buf);
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0,0,W,H);
-    ctx.beginPath();
-    ctx.strokeStyle = '#00c8ff';
-    ctx.lineWidth = 1.5 * devicePixelRatio;
-    ctx.shadowColor = 'rgba(0,200,255,0.5)';
-    ctx.shadowBlur  = 6;
-    const sw = W / buf.length;
-    for (let i=0; i<buf.length; i++) {
-      const x = i * sw;
-      const y = H/2 + buf[i] * H/2.2;
-      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-    // centre line
-    ctx.beginPath(); ctx.strokeStyle='rgba(0,200,255,0.15)';
-    ctx.shadowBlur=0; ctx.lineWidth=0.5*devicePixelRatio;
-    ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
-    animId = requestAnimationFrame(draw);
-  }
-  if (animId) cancelAnimationFrame(animId);
-  draw();
-}
-
-function drawIdleWave() {
-  const canvas = document.getElementById('waveCanvas');
-  const ctx    = canvas.getContext('2d');
-  canvas.width  = canvas.offsetWidth  * devicePixelRatio || 400;
-  canvas.height = canvas.offsetHeight * devicePixelRatio || 128;
-  const W = canvas.width, H = canvas.height;
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(0,0,W,H);
-  ctx.beginPath(); ctx.strokeStyle='rgba(0,200,255,0.2)';
-  ctx.lineWidth = 1; ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
-  ctx.font = `${11*devicePixelRatio}px "IBM Plex Mono"`;
-  ctx.fillStyle = 'rgba(0,200,255,0.3)';
-  ctx.textAlign = 'center';
-  ctx.fillText('▶ press PLAY to generate tone', W/2, H/2 + 4*devicePixelRatio);
-}
-
-// ─── Build WAV file in memory ─────────────────────────────────────────────────
-function buildWAV(code) {
-  const fs      = SAMPLE_RATE_WAV;
-  const toneSmp = Math.floor(fs * TONE_MS / 1000);
-  const gapSmp  = Math.floor(fs * GAP_MS  / 1000);
-  const leadSmp = Math.floor(fs * 0.15);   // 150ms silence at start
-  const tailSmp = Math.floor(fs * 0.2);    // 200ms silence at end
-  const totalSmp = leadSmp + (toneSmp + gapSmp) * code.length + tailSmp;
-
-  const samples = new Float32Array(totalSmp);
-  let pos = leadSmp;
-
-  for (const digit of code) {
-    const [flo, fhi] = DTMF[digit];
-    const attack  = Math.floor(fs * 0.008);
-    const release = Math.floor(fs * 0.010);
-    for (let i=0; i<toneSmp; i++) {
-      const t   = i / fs;
-      let amp = 0.45;
-      if (i < attack)            amp = 0.45 * (i / attack);
-      if (i > toneSmp - release) amp = 0.45 * ((toneSmp - i) / release);
-      samples[pos + i] = amp * (Math.sin(2*Math.PI*flo*t) + Math.sin(2*Math.PI*fhi*t)) / 2;
-    }
-    pos += toneSmp + gapSmp;
-  }
-
-  // Convert float32 → int16 PCM
-  const pcm = new Int16Array(totalSmp);
-  for (let i=0; i<totalSmp; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-  }
-
-  // WAV header
-  const dataBytes = pcm.byteLength;
-  const buf = new ArrayBuffer(44 + dataBytes);
-  const view = new DataView(buf);
-  function str(off, s) { for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); }
-  str(0,'RIFF'); view.setUint32(4, 36+dataBytes, true);
-  str(8,'WAVE'); str(12,'fmt ');
-  view.setUint32(16,16,true); view.setUint16(20,1,true);   // PCM
-  view.setUint16(22,1,true);                                // mono
-  view.setUint32(24,fs,true); view.setUint32(28,fs*2,true);
-  view.setUint16(32,2,true); view.setUint16(34,16,true);
-  str(36,'data'); view.setUint32(40,dataBytes,true);
-  new Int16Array(buf,44).set(pcm);
-  return buf;
-}
-
-// ─── Download WAV ─────────────────────────────────────────────────────────────
-function downloadWAV() {
-  if (!wavData) wavData = buildWAV(SECRET_CODE);
-  const blob = new Blob([wavData], {type:'audio/wav'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = 'captcha_tone.wav'; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
-}
-
-// ─── Verify code ─────────────────────────────────────────────────────────────
-function verifyCode() {
-  const input = document.getElementById('codeInput').value.trim();
-  const msg   = document.getElementById('resultMsg');
-  const inp   = document.getElementById('codeInput');
-
-  if (input.length !== 6) {
-    msg.className = 'result-msg fail';
-    msg.textContent = '⚠ Please enter all 6 digits';
-    msg.style.display = 'block';
+  if (!analyserNode) {
+    ctx2d.strokeStyle = '#e0dbd2';
+    ctx2d.lineWidth   = 1.5;
+    ctx2d.beginPath();
+    ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2);
+    ctx2d.stroke();
     return;
   }
 
-  if (input === SECRET_CODE) {
-    inp.className = 'code-input success';
-    msg.className = 'result-msg success';
-    msg.textContent = '✅ Code verified! Human confirmed.';
-    msg.style.display = 'block';
-    setTimeout(() => {
-      document.getElementById('grantedOverlay').style.display = 'flex';
-    }, 800);
+  const buf = new Uint8Array(analyserNode.frequencyBinCount);
+  analyserNode.getByteTimeDomainData(buf);
+
+  ctx2d.strokeStyle = '#2d6a4f';
+  ctx2d.lineWidth   = 2 * devicePixelRatio;
+  ctx2d.shadowColor = '#2d6a4f';
+  ctx2d.shadowBlur  = 4;
+  ctx2d.beginPath();
+  const step = W / buf.length;
+  buf.forEach((v, i) => {
+    const y = (v / 128) * (H / 2);
+    i === 0 ? ctx2d.moveTo(0, y) : ctx2d.lineTo(i * step, y);
+  });
+  ctx2d.stroke();
+  ctx2d.shadowBlur = 0;
+}
+drawWave();
+
+// ── Steps ─────────────────────────────────────────────────────
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById(`step${i}`);
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    if (i < n) el.querySelector('.step-num').innerHTML =
+      '<svg viewBox="0 0 24 24" style="width:11px;height:11px;fill:#fff"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+    else el.querySelector('.step-num').textContent = i;
+  });
+}
+
+// ── Timer ─────────────────────────────────────────────────────
+let timerInterval = null;
+let secondsLeft   = 300;
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  secondsLeft = 300;
+  updateTimer();
+  timerInterval = setInterval(() => {
+    secondsLeft--;
+    updateTimer();
+    if (secondsLeft <= 0) { clearInterval(timerInterval); generateOTP(); }
+  }, 1000);
+}
+
+function updateTimer() {
+  const m = Math.floor(secondsLeft / 60);
+  const s = secondsLeft % 60;
+  document.getElementById('timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ── Verify ────────────────────────────────────────────────────
+function verify() {
+  const input = document.getElementById('otp-input').value.trim();
+  const ok    = document.getElementById('result-ok');
+  const err   = document.getElementById('result-err');
+  ok.style.display = 'none';
+  err.style.display = 'none';
+
+  if (input === currentOTP) {
+    ok.style.display = 'flex';
+    setStep(3);
+    clearInterval(timerInterval);
+    // Reveal all digits
+    currentOTP.split('').forEach((d, i) => {
+      setTimeout(() => {
+        const el = document.getElementById(`d${i}`);
+        el.className = 'otp-digit revealed';
+        el.textContent = d;
+      }, i * 80);
+    });
   } else {
-    inp.className = 'code-input fail';
-    msg.className = 'result-msg fail';
-    msg.textContent = `❌ Incorrect code. Expected ${SECRET_CODE.length} digits from the tone.`;
-    msg.style.display = 'block';
-    setTimeout(() => { inp.className='code-input'; }, 2000);
+    err.style.display = 'flex';
+    document.getElementById('otp-input').value = '';
   }
 }
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
-init();
-window.addEventListener('load', () => { setTimeout(drawIdleWave, 100); });
-window.addEventListener('resize', drawIdleWave);
-
-// Close overlay on click
-document.getElementById('grantedOverlay').addEventListener('click', function() {
-  this.style.display = 'none';
-  regenerate();
+// ── Events ────────────────────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', () => {
+  setStep(1);
+  playOTP(currentOTP);
 });
+
+document.getElementById('btn-download').addEventListener('click', () => {
+  if (!wavBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(wavBlob);
+  a.download = 'toneguard_captcha.wav';
+  a.click();
+});
+
+document.getElementById('btn-verify').addEventListener('click', verify);
+
+document.getElementById('otp-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') verify();
+});
+
+document.getElementById('otp-input').addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g, '').slice(0, 6);
+});
+
+document.getElementById('btn-refresh').addEventListener('click', function() {
+  this.classList.add('spinning');
+  setTimeout(() => { this.classList.remove('spinning'); generateOTP(); setStep(1); }, 600);
+});
+
+document.getElementById('btn-decoder').addEventListener('click', () => {
+  window.open('decoder.html', '_blank');
+});
+
+// ── Init ──────────────────────────────────────────────────────
+generateOTP();
 </script>
 </body>
 </html>
