@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acoustic CAPTCHA — Are you human?</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --bg: #f5f3ee;
+  --surface: #ffffff;
+  --border: #d8d4cc;
+  --border2: #c2bdb4;
+  --accent: #1a1a2e;
+  --accent2: #e84545;
+  --green: #2d9e6b;
+  --text: #1a1a2e;
+  --muted: #888079;
+  --tag-bg: #eae6df;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+/* Dot grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, #c2bdb4 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 500px;
+}
+
+/* Site header — fake website context */
+.fake-header {
+  display: flex; align-items: center; gap: 0.7rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.fake-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.3rem; font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.fake-logo span { color: var(--accent2); }
+.fake-nav {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+
+/* Captcha box */
+.captcha-box {
+  background: var(--surface);
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.03);
+}
+
+/* Header strip */
+.captcha-header {
+  background: var(--tag-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0.8rem 1.2rem;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.captcha-header .icon {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.captcha-header .title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem; font-weight: 700;
+  color: var(--accent);
+}
+.captcha-header .subtitle {
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-top: 0.05rem;
+}
+
+/* Body */
+.captcha-body { padding: 1.5rem; }
+
+/* Challenge text */
+.challenge-text {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 1.3rem;
+  padding: 0.8rem;
+  background: var(--tag-bg);
+  border-radius: 5px;
+  border-left: 3px solid var(--accent2);
+}
+
+/* Audio player area */
+.audio-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: 6px;
+  padding: 1.2rem;
+  text-align: center;
+  margin-bottom: 1.2rem;
+  background: var(--tag-bg);
+  position: relative;
+}
+
+/* Waveform visualiser (canvas) */
+#waveCanvas {
+  display: block;
+  width: 100%;
+  height: 64px;
+  border-radius: 4px;
+  background: #1a1a2e;
+  margin-bottom: 0.9rem;
+}
+
+/* Play/Stop controls */
+.audio-controls {
+  display: flex; gap: 0.6rem; justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+}
+.btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.btn-play {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-play:hover { background: #2d2d4e; }
+.btn-play:disabled { opacity: 0.4; cursor: default; }
+.btn-dl {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border2);
+}
+.btn-dl:hover { color: var(--accent); border-color: var(--accent); }
+.btn-refresh {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border2);
+}
+.btn-refresh:hover { color: var(--accent2); border-color: var(--accent2); }
+
+.audio-hint {
+  font-size: 0.6rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.audio-hint a {
+  color: var(--accent2);
+  text-decoration: none;
+  font-weight: 600;
+}
+.audio-hint a:hover { text-decoration: underline; }
+
+/* Progress indicator (digit sent) */
+.digit-progress {
+  display: flex; gap: 0.4rem; justify-content: center;
+  margin: 0.8rem 0;
+}
+.dp-cell {
+  width: 32px; height: 32px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 600;
+  color: var(--muted);
+  background: var(--bg);
+  transition: all 0.2s;
+}
+.dp-cell.sending { border-color: #e09000; color: #e09000; background: #fff8e6; }
+.dp-cell.sent    { border-color: var(--green); color: var(--green); background: #edf8f3; }
+
+/* Divider */
+.divider {
+  display: flex; align-items: center; gap: 0.8rem;
+  margin: 1.2rem 0;
+  font-size: 0.6rem; color: var(--muted); letter-spacing: 0.15em;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* Code input */
+.input-label {
+  font-size: 0.63rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+}
+.code-input-row {
+  display: flex; gap: 0.5rem;
+}
+.code-input {
+  flex: 1;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  padding: 0.65rem 0.9rem;
+  background: var(--bg);
+  border: 1.5px solid var(--border2);
+  border-radius: 5px;
+  color: var(--accent);
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.code-input:focus { border-color: var(--accent); }
+.code-input.success { border-color: var(--green); background: #edf8f3; color: var(--green); }
+.code-input.fail    { border-color: var(--accent2); background: #fff0f0; color: var(--accent2); }
+
+.btn-verify {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border-radius: 5px;
+  padding: 0 1.2rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-verify:hover { background: #2d2d4e; }
+
+/* Result message */
+.result-msg {
+  display: none;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.result-msg.success {
+  background: #edf8f3; color: var(--green); border: 1px solid #a8dfc3;
+}
+.result-msg.fail {
+  background: #fff0f0; color: var(--accent2); border: 1px solid #f5b8b8;
+}
+
+/* Footer */
+.captcha-footer {
+  padding: 0.7rem 1.2rem;
+  background: var(--tag-bg);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.55rem; color: var(--muted); letter-spacing: 0.1em;
+}
+.captcha-footer .brand { font-weight: 600; color: var(--accent); }
+
+/* Access granted overlay */
+#grantedOverlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(45,158,107,0.97);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #fff;
+  text-align: center;
+}
+#grantedOverlay .big-check {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes pop { from{transform:scale(0)} to{transform:scale(1)} }
+#grantedOverlay h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.8rem; font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+#grantedOverlay p { font-size: 0.8rem; opacity: 0.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Fake website header -->
+  <div class="fake-header">
+    <div class="fake-logo">Sec<span>ure</span>Portal</div>
+    <div class="fake-nav">LOGIN · REGISTER · HELP</div>
+  </div>
+
+  <!-- CAPTCHA box -->
+  <div class="captcha-box">
+
+    <div class="captcha-header">
+      <div class="icon">🔊</div>
+      <div>
+        <div class="title">Acoustic Verification</div>
+        <div class="subtitle">Confirm you are human using audio challenge</div>
+      </div>
+    </div>
+
+    <div class="captcha-body">
+
+      <div class="challenge-text">
+        A unique code has been encoded into the audio tone below.<br>
+        <strong>Play it</strong>, then visit the <a href="decoder.html" target="_blank" style="color:var(--accent2)">Tone Decoder →</a> to extract the code.
+        Enter the decoded digits in the field below to continue.
+      </div>
+
+      <!-- Audio zone -->
+      <div class="audio-zone">
+        <canvas id="waveCanvas"></canvas>
+
+        <div class="digit-progress" id="digitProgress">
+          <div class="dp-cell" id="dp0">–</div>
+          <div class="dp-cell" id="dp1">–</div>
+          <div class="dp-cell" id="dp2">–</div>
+          <div class="dp-cell" id="dp3">–</div>
+          <div class="dp-cell" id="dp4">–</div>
+          <div class="dp-cell" id="dp5">–</div>
+        </div>
+
+        <div class="audio-controls">
+          <button class="btn btn-play" id="playBtn" onclick="playTone()">▶ Play Tone</button>
+          <button class="btn btn-dl"   id="dlBtn"   onclick="downloadWAV()">⬇ Download WAV</button>
+          <button class="btn btn-refresh" onclick="regenerate()">↻ New Code</button>
+        </div>
+
+        <div class="audio-hint">
+          Can't decode with mic? Download the WAV file and upload it on the
+          <a href="decoder.html" target="_blank">decoder page</a>.
+        </div>
+      </div>
+
+      <div class="divider">ENTER DECODED CODE</div>
+
+      <div class="input-label">Type the 6-digit code from the decoder</div>
+      <div class="code-input-row">
+        <input type="text" class="code-input" id="codeInput"
+               maxlength="6" placeholder="_ _ _ _ _ _"
+               inputmode="numeric" autocomplete="off"
+               oninput="this.value=this.value.replace(/\D/g,'')"
+               onkeydown="if(event.key==='Enter')verifyCode()">
+        <button class="btn-verify" onclick="verifyCode()">VERIFY</button>
+      </div>
+
+      <div class="result-msg" id="resultMsg"></div>
+
+    </div><!-- /body -->
+
+    <div class="captcha-footer">
+      <span class="brand">DSP·CAPTCHA</span>
+      <span>DTMF ACOUSTIC CHALLENGE v1.0</span>
+      <span id="codeId">ID: —</span>
+    </div>
+
+  </div><!-- /captcha-box -->
+
+</div><!-- /wrap -->
+
+<!-- Access granted overlay -->
+<div id="grantedOverlay">
+  <div class="big-check">✅</div>
+  <h2>Access Granted</h2>
+  <p>Human verification successful. Redirecting…</p>
+</div>
+
+<script>
+// ─── DTMF table ──────────────────────────────────────────────────────────────
+const DTMF = {
+  '0':[941,1336],'1':[697,1209],'2':[697,1336],'3':[697,1477],
+  '4':[770,1209],'5':[770,1336],'6':[770,1477],
+  '7':[852,1209],'8':[852,1336],'9':[852,1477],
+};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let SECRET_CODE = '';
+let audioCtx    = null;
+let analyser    = null;
+let animId      = null;
+let wavData     = null;   // cached WAV bytes for download
+const TONE_MS   = 150;    // ms per digit tone
+const GAP_MS    = 70;     // ms silence between digits
+const SAMPLE_RATE_WAV = 44100;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  SECRET_CODE = Array.from({length:6}, ()=>Math.floor(Math.random()*10)).join('');
+  wavData = null;
+  document.getElementById('codeId').textContent = 'ID: ' + SECRET_CODE.slice(0,3) + '***';
+  document.getElementById('codeInput').value = '';
+  document.getElementById('codeInput').className = 'code-input';
+  document.getElementById('resultMsg').style.display = 'none';
+  for (let i=0; i<6; i++) {
+    const c = document.getElementById('dp'+i);
+    c.textContent = '–'; c.className = 'dp-cell';
+  }
+  // Pre-render WAV in background
+  setTimeout(() => { wavData = buildWAV(SECRET_CODE); }, 100);
+}
+
+function regenerate() {
+  if (animId) { cancelAnimationFrame(animId); animId=null; }
+  drawIdleWave();
+  document.getElementById('playBtn').disabled = false;
+  init();
+}
+
+// ─── Audio context ────────────────────────────────────────────────────────────
+function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.connect(audioCtx.destination);
+  drawIdleWave();
+}
+
+// ─── Play DTMF tones via Web Audio ───────────────────────────────────────────
+async function playTone() {
+  ensureAudio();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+  document.getElementById('playBtn').disabled = true;
+
+  const toneSec = TONE_MS / 1000;
+  const gapSec  = GAP_MS  / 1000;
+  let t = audioCtx.currentTime + 0.05;
+
+  const schedule = [];
+  for (const digit of SECRET_CODE) {
+    const [flo, fhi] = DTMF[digit];
+    schedule.push({ t, digit, flo, fhi, dur: toneSec });
+
+    const o1   = audioCtx.createOscillator();
+    const o2   = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    o1.frequency.value = flo; o1.type = 'sine';
+    o2.frequency.value = fhi; o2.type = 'sine';
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.45, t + 0.008);
+    gain.gain.setValueAtTime(0.45, t + toneSec - 0.010);
+    gain.gain.linearRampToValueAtTime(0, t + toneSec);
+    o1.connect(gain); o2.connect(gain);
+    gain.connect(analyser);
+    o1.start(t); o1.stop(t + toneSec);
+    o2.start(t); o2.stop(t + toneSec);
+
+    t += toneSec + gapSec;
+  }
+
+  // Animate digits
+  const startMs = performance.now();
+  for (let i=0; i<6; i++) {
+    const delay = (TONE_MS + GAP_MS) * i;
+    setTimeout(() => {
+      if (i>0) { document.getElementById('dp'+(i-1)).className='dp-cell sent'; }
+      const c = document.getElementById('dp'+i);
+      c.className = 'dp-cell sending';
+      c.textContent = '♪';
+    }, delay + 50);
+  }
+  setTimeout(() => {
+    document.getElementById('dp5').className = 'dp-cell sent';
+    document.getElementById('dp5').textContent = '✓';
+    startScopeAnim();
+  }, (TONE_MS + GAP_MS) * 6 + 50);
+
+  startScopeAnim();
+  const totalMs = (TONE_MS + GAP_MS) * 6;
+  setTimeout(() => {
+    document.getElementById('playBtn').disabled = false;
+  }, totalMs + 300);
+}
+
+// ─── Oscilloscope animation ───────────────────────────────────────────────────
+function startScopeAnim() {
+  const canvas = document.getElementById('waveCanvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth  * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  const W = canvas.width, H = canvas.height;
+  const buf = new Float32Array(analyser.fftSize);
+
+  function draw() {
+    analyser.getFloatTimeDomainData(buf);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0,0,W,H);
+    ctx.beginPath();
+    ctx.strokeStyle = '#00c8ff';
+    ctx.lineWidth = 1.5 * devicePixelRatio;
+    ctx.shadowColor = 'rgba(0,200,255,0.5)';
+    ctx.shadowBlur  = 6;
+    const sw = W / buf.length;
+    for (let i=0; i<buf.length; i++) {
+      const x = i * sw;
+      const y = H/2 + buf[i] * H/2.2;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // centre line
+    ctx.beginPath(); ctx.strokeStyle='rgba(0,200,255,0.15)';
+    ctx.shadowBlur=0; ctx.lineWidth=0.5*devicePixelRatio;
+    ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+    animId = requestAnimationFrame(draw);
+  }
+  if (animId) cancelAnimationFrame(animId);
+  draw();
+}
+
+function drawIdleWave() {
+  const canvas = document.getElementById('waveCanvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth  * devicePixelRatio || 400;
+  canvas.height = canvas.offsetHeight * devicePixelRatio || 128;
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0,0,W,H);
+  ctx.beginPath(); ctx.strokeStyle='rgba(0,200,255,0.2)';
+  ctx.lineWidth = 1; ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+  ctx.font = `${11*devicePixelRatio}px "IBM Plex Mono"`;
+  ctx.fillStyle = 'rgba(0,200,255,0.3)';
+  ctx.textAlign = 'center';
+  ctx.fillText('▶ press PLAY to generate tone', W/2, H/2 + 4*devicePixelRatio);
+}
+
+// ─── Build WAV file in memory ─────────────────────────────────────────────────
+function buildWAV(code) {
+  const fs      = SAMPLE_RATE_WAV;
+  const toneSmp = Math.floor(fs * TONE_MS / 1000);
+  const gapSmp  = Math.floor(fs * GAP_MS  / 1000);
+  const leadSmp = Math.floor(fs * 0.15);   // 150ms silence at start
+  const tailSmp = Math.floor(fs * 0.2);    // 200ms silence at end
+  const totalSmp = leadSmp + (toneSmp + gapSmp) * code.length + tailSmp;
+
+  const samples = new Float32Array(totalSmp);
+  let pos = leadSmp;
+
+  for (const digit of code) {
+    const [flo, fhi] = DTMF[digit];
+    const attack  = Math.floor(fs * 0.008);
+    const release = Math.floor(fs * 0.010);
+    for (let i=0; i<toneSmp; i++) {
+      const t   = i / fs;
+      let amp = 0.45;
+      if (i < attack)            amp = 0.45 * (i / attack);
+      if (i > toneSmp - release) amp = 0.45 * ((toneSmp - i) / release);
+      samples[pos + i] = amp * (Math.sin(2*Math.PI*flo*t) + Math.sin(2*Math.PI*fhi*t)) / 2;
+    }
+    pos += toneSmp + gapSmp;
+  }
+
+  // Convert float32 → int16 PCM
+  const pcm = new Int16Array(totalSmp);
+  for (let i=0; i<totalSmp; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+
+  // WAV header
+  const dataBytes = pcm.byteLength;
+  const buf = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(buf);
+  function str(off, s) { for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); }
+  str(0,'RIFF'); view.setUint32(4, 36+dataBytes, true);
+  str(8,'WAVE'); str(12,'fmt ');
+  view.setUint32(16,16,true); view.setUint16(20,1,true);   // PCM
+  view.setUint16(22,1,true);                                // mono
+  view.setUint32(24,fs,true); view.setUint32(28,fs*2,true);
+  view.setUint16(32,2,true); view.setUint16(34,16,true);
+  str(36,'data'); view.setUint32(40,dataBytes,true);
+  new Int16Array(buf,44).set(pcm);
+  return buf;
+}
+
+// ─── Download WAV ─────────────────────────────────────────────────────────────
+function downloadWAV() {
+  if (!wavData) wavData = buildWAV(SECRET_CODE);
+  const blob = new Blob([wavData], {type:'audio/wav'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'captcha_tone.wav'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+// ─── Verify code ─────────────────────────────────────────────────────────────
+function verifyCode() {
+  const input = document.getElementById('codeInput').value.trim();
+  const msg   = document.getElementById('resultMsg');
+  const inp   = document.getElementById('codeInput');
+
+  if (input.length !== 6) {
+    msg.className = 'result-msg fail';
+    msg.textContent = '⚠ Please enter all 6 digits';
+    msg.style.display = 'block';
+    return;
+  }
+
+  if (input === SECRET_CODE) {
+    inp.className = 'code-input success';
+    msg.className = 'result-msg success';
+    msg.textContent = '✅ Code verified! Human confirmed.';
+    msg.style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('grantedOverlay').style.display = 'flex';
+    }, 800);
+  } else {
+    inp.className = 'code-input fail';
+    msg.className = 'result-msg fail';
+    msg.textContent = `❌ Incorrect code. Expected ${SECRET_CODE.length} digits from the tone.`;
+    msg.style.display = 'block';
+    setTimeout(() => { inp.className='code-input'; }, 2000);
+  }
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+init();
+window.addEventListener('load', () => { setTimeout(drawIdleWave, 100); });
+window.addEventListener('resize', drawIdleWave);
+
+// Close overlay on click
+document.getElementById('grantedOverlay').addEventListener('click', function() {
+  this.style.display = 'none';
+  regenerate();
+});
+</script>
+</body>
+</html>
